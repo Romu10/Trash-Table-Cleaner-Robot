@@ -17,6 +17,7 @@ def generate_launch_description():
             executable='controller_server',
             name='controller_server',
             output='screen',
+            remappings=[('/cmd_vel', '/diffbot_base_controller/cmd_vel_unstamped')],
             parameters=[controller_yaml]),
 
         Node(
@@ -31,6 +32,7 @@ def generate_launch_description():
             executable='behavior_server',
             name='behavior_server',
             parameters=[recovery_yaml],
+            remappings=[('/cmd_vel', '/diffbot_base_controller/cmd_vel_unstamped')],
             output='screen'),
 
         Node(
