@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'look_out_trash_table = nav2_interface.look_out_trash_table:main'
         ],
     },
 )
