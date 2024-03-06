@@ -15,6 +15,20 @@ def generate_launch_description():
 
     return LaunchDescription([ 
         Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'robot_base_link'],
+            output='screen',
+        ),
+
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            arguments=['0', '0', '0', '0', '0', '0', 'robot_base_footprint', 'base_link'],
+            output='screen',
+        ),
+
+        Node(
             package='rviz2',
             executable='rviz2',
             name='rviz2',
