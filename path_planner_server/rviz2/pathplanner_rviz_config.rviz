@@ -26,7 +26,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: LaserScan
 Visualization Manager:
   Class: ""
   Displays:
@@ -76,6 +76,8 @@ Visualization Manager:
         All Enabled: true
         base_link:
           Value: true
+        map:
+          Value: true
         odom:
           Value: true
         robot_base_docking_contact_link:
@@ -104,7 +106,26 @@ Visualization Manager:
       Show Axes: true
       Show Names: false
       Tree:
-        {}
+        map:
+          odom:
+            robot_base_footprint:
+              base_link:
+                robot_base_link:
+                  robot_evelator_base_link:
+                    {}
+                  robot_front_cover_link:
+                    robot_base_docking_contact_link:
+                      {}
+                  robot_front_laser_base_link:
+                    {}
+                  robot_omni_backwheel_link:
+                    {}
+                  robot_omni_front_leftwheel_link:
+                    {}
+                  robot_omni_front_rightwheel_link:
+                    {}
+              robot_top_cover_link:
+                {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -296,8 +317,8 @@ Visualization Manager:
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
-      Line Style: Lines
-      Line Width: 0.029999999329447746
+      Line Style: Billboards
+      Line Width: 0.05000000074505806
       Name: LocalPath
       Offset:
         X: 0
@@ -409,15 +430,15 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 22.209423065185547
+      Distance: 21.57439613342285
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 3.4896676540374756
-        Y: -2.545219659805298
+        X: 3.493248701095581
+        Y: -3.20814847946167
         Z: -0.16128812730312347
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
@@ -427,7 +448,7 @@ Visualization Manager:
       Pitch: 1.5297966003417969
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.0103995893150568
+      Yaw: 0.00539958942681551
     Saved: ~
 Window Geometry:
   Displays:
