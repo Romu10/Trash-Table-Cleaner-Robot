@@ -29,7 +29,7 @@ controller_server:
       min_vel_y: 0.0
       max_vel_x: 0.35
       max_vel_y: 0.0
-      max_vel_theta: 1.0
+      max_vel_theta: 0.65
       min_speed_xy: 0.0
       max_speed_xy: 0.35
       min_speed_theta: 0.0
@@ -60,7 +60,7 @@ controller_server:
       PathDist.scale: 32.0
       GoalDist.scale: 24.0
       RotateToGoal.scale: 32.0
-      RotateToGoal.slowing_factor: 5.0
+      RotateToGoal.slowing_factor: 10.0
       RotateToGoal.lookahead_time: -1.0
 
 local_costmap:

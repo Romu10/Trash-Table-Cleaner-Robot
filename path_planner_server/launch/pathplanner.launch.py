@@ -71,8 +71,8 @@ def generate_launch_description():
             package='nav2_behaviors',
             executable='behavior_server',
             name='behavior_server',
-            parameters=[recovery_yaml],
             remappings=[('/cmd_vel', '/diffbot_base_controller/cmd_vel_unstamped')],
+            parameters=[recovery_yaml],
             output='screen'),
 
         Node(
