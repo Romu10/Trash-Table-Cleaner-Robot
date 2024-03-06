@@ -5,7 +5,7 @@ planner_server:
     planner_plugins: ["GridBased"]
     GridBased:
       plugin: "nav2_navfn_planner/NavfnPlanner"
-      tolerance: 0.5
+      tolerance: 0.5  # Tolerance in meters between requested goal pose and end of path.
       use_astar: false
       allow_unknown: true
 
@@ -28,8 +28,8 @@ global_costmap:
         map_subscribe_transient_local: True
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 2.5
-        inflation_radius: 0.25
+        cost_scaling_factor: 10.0
+        inflation_radius: 0.40
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
