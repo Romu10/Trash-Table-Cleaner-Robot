@@ -67,7 +67,7 @@ def arrivalTime(navigator, request_table_location):
 def getTaskResult(navigator, request_table_location):
     result = navigator.getResult()
     if result == TaskResult.SUCCEEDED:
-        print('Looking for trash table in ' + request_table_location + ' .')
+        print('Arrived successfully to ' + request_table_location + ' .')
 
     elif result == TaskResult.CANCELED:
         print('Task at ' + request_table_location + ' was canceled. Returning to staging point...')\
@@ -93,27 +93,22 @@ def main():
     # Define trash table final destination
     request_destination = 'backroom_2'
 
-    # Go to position 1
-    request_table_location = 'Position 1'
-    goToPosition(navigator, request_table_location, table_trash_positions['position_1'])
+    # Define the initial variable
+    request_table_location = 'position_'
+
+    # Iterate over a sequence from 1 to 6
+    for i in range(1, 7):
+        # Define the goal position 
+        request_table_location = 'position_' + str(i)
+
+        # Go to position 
+        goToPosition(navigator, request_table_location, table_trash_positions[request_table_location])
  
-    # Arrival Time 
-    arrivalTime(navigator, request_table_location)
+        # Arrival Time 
+        arrivalTime(navigator, request_table_location)
 
-    # Get Task Result 
-    getTaskResult(navigator, request_table_location)
-
-    # Go to position 2
-    request_table_location = 'Position 2'
-    goToPosition(navigator, request_table_location, table_trash_positions['position_2'])
- 
-    # Arrival Time 
-    arrivalTime(navigator, request_table_location)
-
-    # Get Task Result 
-    getTaskResult(navigator, request_table_location)
-
-
+        # Get Task Result 
+        getTaskResult(navigator, request_table_location)
 
     while not navigator.isTaskComplete():
         pass
