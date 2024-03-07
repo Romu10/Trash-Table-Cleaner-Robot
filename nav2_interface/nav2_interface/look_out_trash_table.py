@@ -10,34 +10,26 @@ import rclpy
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
 # Shelf positions for picking
-shelf_positions = {
-    "shelf_A": [-3.829, -7.604],
-    "shelf_B": [-3.791, -3.287],
-    "shelf_C": [-1.000, -2.000],
-    "shelf_D": [-3.24, 5.861]}
+table_trash_positions = {
+    "position_1": [0.954607, 0.364404, 0.709042, 0.705167],
+    "position_2": [-0.0491602, -0.689815, -0.999793, 0.0203558],
+    "position_3": [-1.46219, -2.08501, -0.705164, 0.709044],
+    "position_4": [3.92892, -1.435, -0.100632, 0.994924],
+    "position_5": [4.92647, 0.19721, 0.691586, 0.722294],
+    "position_6": [1.1534, -2.76343, -0.694667,0.719332]}
 
 # Shipping destination for picked products
 shipping_destinations = {
-    "recycling": [-0.205, 7.403],
-    "pallet_jack7": [3.900, -0.900],
-    "conveyer_432": [6.217, 2.153],
-    "frieght_bay_3": [-6.349, 9.147]}
-
-'''
-Basic item picking demo. In this demonstration, the expectation
-is that a person is waiting at the item shelf to put the item on the robot
-and at the pallet jack to remove it
-(probably with a button for 'got item, robot go do next task').
-'''
-
+    "backroom_1": [7.21814, -2.1297, -0.999085, 0.0427718],
+    "backroom_2": [8.44286, -2.18891, 0.00634964, 0.99998],}
 
 def main():
     # Recieved virtual request for picking item at Shelf A and bringing to
     # worker at the pallet jack 7 for shipping. This request would
     # contain the shelf ID ("shelf_A") and shipping destination ("pallet_jack7")
     ####################
-    request_item_location = 'shelf_C'
-    request_destination = 'pallet_jack7'
+    request_item_location = 'position_1'
+    request_destination = 'backroom_2'
     ####################
 
     rclpy.init()
@@ -60,10 +52,10 @@ def main():
     shelf_item_pose = PoseStamped()
     shelf_item_pose.header.frame_id = 'map'
     shelf_item_pose.header.stamp = navigator.get_clock().now().to_msg()
-    shelf_item_pose.pose.position.x = shelf_positions[request_item_location][0]
-    shelf_item_pose.pose.position.y = shelf_positions[request_item_location][1]
-    shelf_item_pose.pose.orientation.z = 1.0
-    shelf_item_pose.pose.orientation.w = 0.0
+    shelf_item_pose.pose.position.x = table_trash_positions[request_item_location][0]
+    shelf_item_pose.pose.position.y = table_trash_positions[request_item_location][1]
+    shelf_item_pose.pose.orientation.z = table_trash_positions[request_item_location][2]
+    shelf_item_pose.pose.orientation.w = table_trash_positions[request_item_location][3]
     print('Received request for item picking at ' + request_item_location + '.')
     navigator.goToPose(shelf_item_pose)
 
