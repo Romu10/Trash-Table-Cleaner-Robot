@@ -2,7 +2,8 @@
 
 import time
 from copy import deepcopy
-
+import rclpy
+from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
 from rclpy.duration import Duration
 import rclpy
@@ -31,62 +32,68 @@ robot_init_position = {                                                     #
     "start_position": [0.00, 0.00, 0.00, 0.99]}                             #
 #############################################################################
 
-def setRobotInitPosition(navigator, location, position, frame = 'map'):
-    initial_pose = PoseStamped()
-    initial_pose.header.frame_id = 'map'
-    initial_pose.header.stamp = navigator.get_clock().now().to_msg()
-    initial_pose.pose.position.x = position[0]
-    initial_pose.pose.position.y = position[1]
-    initial_pose.pose.orientation.z = position[2]
-    initial_pose.pose.orientation.w = position[3]
-    print('Set initial position at ' + location + '.')
-    navigator.setInitialPose(initial_pose)
+class Nav2TaskManager(Node):
 
-def goToPosition(navigator, location, position, frame = 'map'):
-    table_item_pose = PoseStamped()
-    table_item_pose.header.frame_id = frame
-    table_item_pose.header.stamp = navigator.get_clock().now().to_msg()
-    table_item_pose.pose.position.x = position[0]
-    table_item_pose.pose.position.y = position[1]
-    table_item_pose.pose.orientation.z = position[2]
-    table_item_pose.pose.orientation.w = position[3]
-    print('Looking for trash table picking at ' + location + '.')
-    navigator.goToPose(table_item_pose)
+    def __init__(self):
+        super().__init__('nav2_task_manager')
+ 
+    def setRobotInitPosition(self, navigator, location, position, frame = 'map'):
+        initial_pose = PoseStamped()
+        initial_pose.header.frame_id = 'map'
+        initial_pose.header.stamp = navigator.get_clock().now().to_msg()
+        initial_pose.pose.position.x = position[0]
+        initial_pose.pose.position.y = position[1]
+        initial_pose.pose.orientation.z = position[2]
+        initial_pose.pose.orientation.w = position[3]
+        print('Set initial position at ' + location + '.')
+        navigator.setInitialPose(initial_pose)
 
-def arrivalTime(navigator, request_table_location):
-    i = 0
-    while not navigator.isTaskComplete():
-        i = i + 1
-        feedback = navigator.getFeedback()
-        if feedback and i % 5 == 0:
-            print('Estimated time of arrival at ' + request_table_location +
-                  ' for drop off: ' + '{0:.0f}'.format(
-                      Duration.from_msg(feedback.estimated_time_remaining).nanoseconds / 1e9)
-                  + ' seconds.')
+    def goToPosition(self, navigator, location, position, frame = 'map'):
+        table_item_pose = PoseStamped()
+        table_item_pose.header.frame_id = frame
+        table_item_pose.header.stamp = navigator.get_clock().now().to_msg()
+        table_item_pose.pose.position.x = position[0]
+        table_item_pose.pose.position.y = position[1]
+        table_item_pose.pose.orientation.z = position[2]
+        table_item_pose.pose.orientation.w = position[3]
+        print('Looking for trash table picking at ' + location + '.')
+        navigator.goToPose(table_item_pose)
 
-def getTaskResult(navigator, request_table_location):
-    result = navigator.getResult()
-    if result == TaskResult.SUCCEEDED:
-        print('Arrived successfully to ' + request_table_location + ' .')
+    def arrivalTime(self, navigator, request_table_location):
+        i = 0
+        while not navigator.isTaskComplete():
+            i = i + 1
+            feedback = navigator.getFeedback()
+            if feedback and i % 5 == 0:
+                print('Estimated time of arrival at ' + request_table_location +
+                    ' for drop off: ' + '{0:.0f}'.format(
+                        Duration.from_msg(feedback.estimated_time_remaining).nanoseconds / 1e9)
+                    + ' seconds.')
 
-    elif result == TaskResult.CANCELED:
-        print('Task at ' + request_table_location + ' was canceled. Returning to staging point...')\
+    def getTaskResult(self, navigator, request_table_location):
+        result = navigator.getResult()
+        if result == TaskResult.SUCCEEDED:
+            print('Arrived successfully to ' + request_table_location + ' .')
 
-        # Return to starter position
-        goToPosition(navigator, 'Start Position', robot_init_position['start_position'])
+        elif result == TaskResult.CANCELED:
+            print('Task at ' + request_table_location + ' was canceled. Returning to staging point...')\
 
-    elif result == TaskResult.FAILED:
-        print('Task at ' + request_table_location + ' failed!')
-        exit(-1)
+            # Return to starter position
+            self.goToPosition(navigator, 'Start Position', robot_init_position['start_position'])
+
+        elif result == TaskResult.FAILED:
+            print('Task at ' + request_table_location + ' failed!')
+            exit(-1)
 
 def main():
 
     rclpy.init()
     navigator = BasicNavigator()
+    manager = Nav2TaskManager()
 
     # Set your demo's initial pose
-    setRobotInitPosition(navigator, 'Start Position', robot_init_position['start_position'])
-
+    manager.setRobotInitPosition(navigator, 'Start Position', robot_init_position['start_position'])
+    
     # Wait for navigation to activate fully
     navigator.waitUntilNav2Active()
 
@@ -102,19 +109,18 @@ def main():
         request_table_location = 'position_' + str(i)
 
         # Go to position 
-        goToPosition(navigator, request_table_location, table_trash_positions[request_table_location])
+        manager.goToPosition(navigator, request_table_location, table_trash_positions[request_table_location])
  
         # Arrival Time 
-        arrivalTime(navigator, request_table_location)
+        manager.arrivalTime(navigator, request_table_location)
 
         # Get Task Result 
-        getTaskResult(navigator, request_table_location)
+        manager.getTaskResult(navigator, request_table_location)
 
     while not navigator.isTaskComplete():
         pass
 
     exit(0)
-
-
+    
 if __name__ == '__main__':
     main()
