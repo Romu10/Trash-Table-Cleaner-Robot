@@ -4,10 +4,13 @@
 #include "rclcpp/publisher.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/subscription.hpp"
+#include "sensor_msgs/msg/detail/laser_scan__struct.hpp"
 #include "std_srvs/srv/detail/set_bool__struct.hpp"
 #include "std_srvs/srv/set_bool.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "geometry_msgs/msg/twist.hpp"
+#include "sensor_msgs/msg/laser_scan.hpp"
+#include <functional>
 
 
 class TrashTableDetect : public rclcpp::Node
@@ -23,14 +26,19 @@ public:
         cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/diffbot_base_controller/cmd_vel_unstamped", 10);
 
         // Define the odometry subscriber
-        odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>("/diffbot_base_controller/odom", 10, std::bind(&TrashTableDetect::odom_callback, this, std::placeholders::_1));
+        odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>("/diffbot_base_controller/odom", 10, 
+            std::bind(&TrashTableDetect::odom_callback, this, std::placeholders::_1));
+
+        // Define scan subscriber
+        scan_sub_ = this-> create_subscription<sensor_msgs::msg::LaserScan>("/scan", 10, 
+            std::bind(&TrashTableDetect::scan_callback, this, std::placeholders::_1));
     }
 
 private:
     
     // Service callback
-    void service_callback(const std::shared_ptr<std_srvs::srv::SetBool::Request> request, std::shared_ptr<std_srvs::srv::SetBool::Response> response)
-    {
+    void service_callback(const std::shared_ptr<std_srvs::srv::SetBool::Request> request, 
+        std::shared_ptr<std_srvs::srv::SetBool::Response> response){
         // Service logic
         RCLCPP_INFO(this->get_logger(), "Service called");
         response->success = true;
@@ -43,8 +51,7 @@ private:
     }
 
     // Odometry callback 
-    void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
-    {
+    void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg){
 
         if (!msg){
             RCLCPP_ERROR(this->get_logger(), "No data received from Odometry");
@@ -73,23 +80,45 @@ private:
 
     }
 
+    // Laser callback
+    void scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg){
+        if (!msg){
+            RCLCPP_ERROR(this->get_logger(), "No data received from Scan");
+        }
+        else{
+            laser_quantity = msg->ranges.size();;
+            RCLCPP_INFO_ONCE(this->get_logger(), "Data received from Scan: \nRanges: %i", laser_quantity);
+
+            laser_distances = msg->ranges; 
+        }
+    }
+
     // ROS 2 definitions 
     rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr detection_srv_;
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_; 
+    rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_; 
 
-    // Odometry callback variables
+
+    // odometry callback variables
         
-        // Pos related 
+        // pos related 
     geometry_msgs::msg::Point cur_pos;
 
-        // Yaw related
+        // yaw related
     double calculate_yaw; 
     double current_yaw; 
 
-        // Calculate Yaw related
+        // calculate Yaw related
     geometry_msgs::msg::Quaternion quaternion;
     long double quaternion_x, quaternion_y, quaternion_z, quaternion_w = 0.0; 
+
+    // scan callback variables
+
+        // distances
+    std::vector<float> laser_distances;
+        // laser quantity
+    int laser_quantity; 
 
 };
 

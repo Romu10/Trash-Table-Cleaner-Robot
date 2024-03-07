@@ -22,7 +22,8 @@ ament_target_dependencies(trash_table_detect
 						geometry_msgs 
 						nav_msgs    
 						tf2
-						std_srvs)
+						std_srvs
+						sensor_msgs)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
