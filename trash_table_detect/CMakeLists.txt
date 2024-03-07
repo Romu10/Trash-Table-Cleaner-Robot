@@ -12,6 +12,17 @@ find_package(std_srvs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(tf2 REQUIRED)
+
+add_executable(trash_table_detect src/trash_table_detection.cpp)
+ament_target_dependencies(trash_table_detect 
+						rclcpp 
+						std_msgs  
+						geometry_msgs 
+						nav_msgs    
+						tf2
+						std_srvs)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -24,5 +35,9 @@ if(BUILD_TESTING)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+install(TARGETS
+    trash_table_detect
+  	DESTINATION lib/${PROJECT_NAME})
 
 ament_package()
