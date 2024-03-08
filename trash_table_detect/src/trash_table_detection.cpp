@@ -25,6 +25,9 @@ public:
         // Define the cmd_vel publisher 
         cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/diffbot_base_controller/cmd_vel_unstamped", 10);
 
+        // Define the laser filtered publisher 
+        table_scan_filtered_ = this->create_publisher<sensor_msgs::msg::LaserScan>("/table_scan_filtered", 10);
+
         // Define the odometry subscriber
         odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>("/diffbot_base_controller/odom", 10, 
             std::bind(&TrashTableDetect::odom_callback, this, std::placeholders::_1));
@@ -32,6 +35,7 @@ public:
         // Define scan subscriber
         scan_sub_ = this-> create_subscription<sensor_msgs::msg::LaserScan>("/scan", 10, 
             std::bind(&TrashTableDetect::scan_callback, this, std::placeholders::_1));
+
     }
 
 private:
@@ -77,7 +81,6 @@ private:
 
             RCLCPP_INFO_ONCE(this->get_logger(), "Data received from Odometry: \nYaw: %f", calculate_yaw);
         }
-
     }
 
     // Laser callback
@@ -86,10 +89,49 @@ private:
             RCLCPP_ERROR(this->get_logger(), "No data received from Scan");
         }
         else{
-            laser_quantity = msg->ranges.size();;
+            // Print out the laser readings received
+            laser_quantity = msg->ranges.size();
             RCLCPP_INFO_ONCE(this->get_logger(), "Data received from Scan: \nRanges: %i", laser_quantity);
 
-            laser_distances = msg->ranges; 
+            // Get the total number of readings from the laser 
+            size_t num_readings = msg->ranges.size();
+
+            // Calculate the initial angle and the angle increment
+            double angle_min = msg->angle_min;
+            double angle_increment = msg->angle_increment;
+
+            // Calculate the min and max angle for the desired ranges in front of the robot
+            double angle_min_range = -M_PI / 6.0;  // rad 
+            double angle_max_range = M_PI / 6.0;   // rad
+
+            // Create a new msg for LaserScan to save the reading in the desired range
+            sensor_msgs::msg::LaserScan laser_in_range_msg;
+            laser_in_range_msg.header = msg->header;
+            laser_in_range_msg.angle_min = angle_min_range;
+            laser_in_range_msg.angle_max = angle_max_range;
+            laser_in_range_msg.angle_increment = msg->angle_increment;
+            laser_in_range_msg.time_increment = msg->time_increment;
+            laser_in_range_msg.scan_time = msg->scan_time;
+            laser_in_range_msg.range_min = msg->range_min;
+            laser_in_range_msg.range_max = msg->range_max;
+
+            // Filter the readings inside the desired angle 
+            for (size_t i = 0; i < num_readings; ++i)
+            {
+                // Calculate the angle of the actual laser reading 
+                double angle = angle_min + i * angle_increment;
+
+                // Verify if the angle is in the desired range 
+                if (angle >= angle_min_range && angle <= angle_max_range)
+                {
+                    // Process the laser reading in the desired angle 
+                    laser_in_range_msg.ranges.push_back(msg->ranges[i]);
+
+                }
+            }
+
+            // Publish the message
+            table_scan_filtered_->publish(laser_in_range_msg);
         }
     }
 
@@ -98,7 +140,7 @@ private:
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_; 
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_; 
-
+    rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr table_scan_filtered_;
 
     // odometry callback variables
         
