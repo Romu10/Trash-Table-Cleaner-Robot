@@ -18,7 +18,7 @@ class TrashTableDetection(Node):
         self.list_of_laser_values = []
 
         # define k for clustering
-        self.k = 15
+        self.k = 10
 
         # define a ros subscription
         self.subscription = self.create_subscription(LaserScan, 'table_scan_filtered', self.laser_callback, 10)
@@ -47,55 +47,47 @@ class TrashTableDetection(Node):
         # merge data
         self.data = np.column_stack((self.y_coordinates, self.x_coordinates))
 
+        self.clustering()
+        self.calculate_cluster_error()
         self.plot_data()
     
     def plot_data(self):
-        # Agregar un círculo estático en las coordenadas (0.5, 0.5) con radio 0.1
-        # circle = plt.Circle((0.0, -1.0), 0.3, color='r', fill=True)
-        # plt.gca().add_patch(circle)
 
-        # merge data
-        # self.data = np.column_stack((self.y_coordinates, self.x_coordinates))
+        fig, axs = plt.subplots(1, 2, figsize=(10, 5))  # Crea una figura con 1 fila y 2 columnas
 
-        # plot coordinates data
-        #plt.scatter(self.data[:,0],self.data[:,1])
-        
-        # Set the labels for the axes
-        plt.xlabel('X Coordinate')
-        plt.ylabel('Y Coordinate')
+        # Scatter plot para el primer subplot
+        axs[0].scatter(self.data[:,0], self.data[:,1], c=self.kmeans.labels_.astype(float), s=50)
+        axs[0].scatter(self.centroids[:,0], self.centroids[:,1], c='red', marker='*', s=50)  # Añade los centroides al mismo subplot
+        axs[0].set_title('Scatter Plot con Centroides')  # Título del primer subplota
+        axs[0].set_xlabel('X Coordinates')
+        axs[0].set_ylabel('Y Coordinates')
+        axs[0].set_xlim(-3, 3)
+        axs[0].set_ylim(-0.5, 5)
 
-        # Set the limits for the axes
-        plt.xlim(-3, 3)
-        plt.ylim(-1, 5)
+        # Plot the second set of data on the second subplot
+        axs[1].plot(self.krango, self.sse)
+        axs[1].set_title('Sum of Square Error')
+        axs[1].set_xlabel('Error')
+        axs[1].set_ylabel('K value')
 
-        self.clustering()
-        
+        # Show the plots
+        plt.show()
+      
     
     def clustering(self):
-        kmeans = KMeans(n_clusters=self.k).fit(self.data)
-        centroids = kmeans.cluster_centers_
-        print(centroids)
-        #plt.scatter(self.data[:,0], self.data[:,1], c=kmeans.labels_.astype(float), s=50)
-        #plt.scatter(centroids[:,0], centroids[:,1], c='red', marker='*', s=50)
-        #plt.show()
-        self.calculate_cluster_error()
-    
-    def calculate_cluster_error(self):
-        # Calculate la metrica SSE Sum of Square Error to differents k
-        krango = range(1,10)
-        sse=[]
-        for k in krango:
-            kmeans = KMeans(n_clusters=k).fit(self.data)
-            sse.append(kmeans.inertia_)
-        print(sse)
-        plt.xlabel('K')
-        plt.ylabel('SSE')
-        plt.xlim(0, 10)
-        plt.ylim(0, 150)
-        plt.plot(krango,sse)
-        plt.show()
+        self.kmeans = KMeans(n_clusters=self.k).fit(self.data)
+        self.centroids = self.kmeans.cluster_centers_
+        print('\nCentroids: \n', self.centroids)
 
     
+    def calculate_cluster_error(self):
+        self.krango = range(1,self.k)
+        self.sse=[]
+        for k in self.krango:
+            kmeans = KMeans(n_clusters=k).fit(self.data)
+            self.sse.append(kmeans.inertia_)
+        print('\nCluster errors for K = %i to K = 0' % self.k)
+        print(self.sse)
 
 def main(args=None):
     rclpy.init(args=args)
