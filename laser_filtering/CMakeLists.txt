@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(trash_table_detect)
+project(laser_filtering)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -10,19 +10,15 @@ find_package(ament_cmake REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(tf2 REQUIRED)
 
-add_executable(trash_table_detect src/trash_table_detection.cpp)
-ament_target_dependencies(trash_table_detect 
+
+add_executable(laser_filtering src/laser_filtering.cpp)
+ament_target_dependencies(laser_filtering 
 						rclcpp 
 						std_msgs  
 						geometry_msgs 
-						nav_msgs    
-						tf2
-						std_srvs
 						sensor_msgs)
 
 if(BUILD_TESTING)
@@ -38,7 +34,7 @@ if(BUILD_TESTING)
 endif()
 
 install(TARGETS
-    trash_table_detect
+    laser_filtering
   	DESTINATION lib/${PROJECT_NAME})
 
 ament_package()
