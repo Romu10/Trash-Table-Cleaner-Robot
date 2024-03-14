@@ -20,7 +20,7 @@ class TrashTableDetection(Node):
         self.list_of_laser_values = []
 
         # define k for clustering
-        self.k = 20
+        self.k = 15
 
         # define a ros subscription
         self.subscription = self.create_subscription(LaserScan, 'table_scan_filtered', self.laser_callback, 10)
@@ -55,44 +55,50 @@ class TrashTableDetection(Node):
         self.predict_cluster()
         self.calculate_cluster_error()
         self.print_data_matrix()
-        self.process_data_matrix()
         self.count_cluster_repetitions()
-        self.get_smaller_values_from_cluster(15)
-        self.extrac_selection_from_process_matrix()
+        self.get_smaller_values_from_cluster(number_of_values=15)
+        self.distances = self.calculate_distance_to_zero(coordinates= self.centroids, name_of_coordinates= 'Clusters')
+        self.selected_points_with_distances_sorted()
+        self.selected_points_with_distances_sorted_filtered(self.sorted_matrix_with_coord_dist, columna=4, valor_maximo=3.0)
+        self.filtrarCoordenadas()  #
+        self.leg_distances = self.calculate_distance_to_zero(self.array_final,name_of_coordinates= 'Table Leg Distances')
         self.plot_data()
     
     def plot_data(self):
 
-        fig, axs = plt.subplots(2, 2, figsize=(10, 5))  # Crea una figura con 1 fila y 2 columnas
+        fig, axs = plt.subplots(2, 3, figsize=(10, 5))  # Crea una figura con 1 fila y 2 columnas
+        
+        plt.subplots_adjust(wspace=0.4, hspace=0.6)
 
-        # Scatter plot para el primer subplot
         axs[0,0].scatter(self.data[:,0], self.data[:,1], c=self.kmeans.labels_.astype(float), s=50)
         axs[0,0].scatter(self.centroids[:,0], self.centroids[:,1], c='red', marker='*', s=50)  
-        axs[0,0].set_title('Scatter Plot with Centroides')  
+        axs[0,0].set_title('Groups With Centroids')  
         axs[0,0].set_xlabel('X Coordinates')
         axs[0,0].set_ylabel('Y Coordinates')
         axs[0,0].set_xlim(-3, 3)
         axs[0,0].set_ylim(-0.5, 5)
 
-        # Scatter plot para el primer subplot
-        axs[0,1].scatter(self.matrix_without_reps[:,0], self.matrix_without_reps[:,1], s=50)
-        axs[0,1].scatter(self.centroids[:,0], self.centroids[:,1], c='red', marker='*', s=50)
-        axs[0,1].scatter(self.selected_points[:,0], self.selected_points[:,1], c='green', marker='*', s=50)  
-        axs[0,1].set_title('Scatter Plot Filt with Centroides')  
+        axs[0,1].scatter(self.datos_filtrados[:,2], self.datos_filtrados[:,3], c='blue', marker='o', s=50)  
+        axs[0,1].scatter(self.array_final[:,0], self.array_final[:,1], c='orange', marker='+', s=50)  
+        axs[0,1].set_title('Apply filters')  
         axs[0,1].set_xlabel('X Coordinates')
         axs[0,1].set_ylabel('Y Coordinates')
         axs[0,1].set_xlim(-3, 3)
         axs[0,1].set_ylim(-0.5, 5)
 
-        # Plot the second set of data on the second subplot
-        axs[1,0].plot(self.krango, self.sse)
-        axs[1,0].set_title('Sum of Square Error')
-        axs[1,0].set_xlabel('Error')
-        axs[1,0].set_ylabel('K value')
+        axs[0,2].scatter(self.array_final[:,0], self.array_final[:,1], c='green', marker='s')
+        axs[0,2].set_title('Legs Position Found')  
+        axs[0,2].set_xlabel('X Coordinates')
+        axs[0,2].set_ylabel('Y Coordinates')
+        axs[0,2].set_xlim(-3, 3)
+        axs[0,2].set_ylim(-0.5, 4)
 
-        # Plot the third set of data on the third subplot
-        #axs[1,1].scatter(self.list_of_cluster_values, self.frecuencies, s=50)
-        axs[1,1].stem(self.list_of_cluster_values, self.frecuencies)
+        axs[1,0].plot(self.krango, self.sse, c='black')
+        axs[1,0].set_title('Sum of Square Error')
+        axs[1,0].set_xlabel('K Value')
+        axs[1,0].set_ylabel('Error')
+
+        axs[1,1].stem(self.list_of_cluster_values, self.frecuencies, linefmt='k-', markerfmt='ro')
         axs[1,1].set_title('Group Cluster Repetitions')
         axs[1,1].set_xlabel('Cluster Group')
         axs[1,1].set_ylabel('Cluster Repetition')
@@ -125,8 +131,8 @@ class TrashTableDetection(Node):
     
     def print_data_matrix(self): 
         self.data_with_cluster = np.column_stack((self.y_coordinates, self.x_coordinates, self.clust))
-        print('\nLaser Data with Cluster\n')
-        print(self.data_with_cluster)
+        # print('\nLaser Data with Cluster\n')
+        # print(self.data_with_cluster)
 
     def count_cluster_repetitions(self):
         self.frecuencies = np.bincount(self.clust)
@@ -136,37 +142,62 @@ class TrashTableDetection(Node):
 
         print('\nCluster repetitions\n', self.frecuencies)
         for numero, frecuencia in enumerate(self.frecuencies):
-            if frecuencia > 0 and frecuencia < 30:
+            if frecuencia > 0 and frecuencia < 40:
                 self.cluster_w_repetitions_num.append([numero, frecuencia])
 
         print('\nMatrix with cluster reps\n', self.cluster_w_repetitions_num)
 
     def get_smaller_values_from_cluster(self, number_of_values):
-        data_matrix_sorted = sorted(self.cluster_w_repetitions_num, key=lambda x: x[1])
+        data_matrix_sorted = sorted(self.cluster_w_repetitions_num, key=lambda x: x[1], reverse=True)
         filtered_sorted_values = data_matrix_sorted[:number_of_values]
         shaped_matrix = np.array(filtered_sorted_values)
         self.matrix_filtered_less = shaped_matrix.reshape(-1, 2)
         print('\nFiltered values\n', self.matrix_filtered_less)
-
-    def process_data_matrix(self):
-        unique_values = set()
-        filtered_matrix = []
-
-        for fila in self.data_with_cluster:
-            if fila[2] not in unique_values:
-                filtered_matrix.append(fila)
-                unique_values.add(fila[2])
-
-        # convert to 3xn matrix
-        self.matrix_without_reps = np.array(filtered_matrix)
-        print('\nLaser Data Filtered without reps\n', self.matrix_without_reps)
     
-    def extrac_selection_from_process_matrix(self):
-        # Extraer valores de la primera y segunda columna según los índices de la tercera columna
-        self.selected_points = self.matrix_without_reps[self.matrix_filtered_less[:, 0], :2]
+    def calculate_distance_to_zero(self, coordinates, name_of_coordinates):
+        distances = np.linalg.norm(coordinates, axis=1)
+        distances = distances.reshape(-1, 1)
+        print('\nDistance from zero for selected points: ' + name_of_coordinates + '\n', distances)
+        return distances
+    
+    def selected_points_with_distances_sorted(self):
+        matrix = np.column_stack((self.matrix_filtered_less, self.centroids, self.distances))
+        # Obtener índices que ordenan la matriz según la tercera columna
+        sorted_indices = np.argsort(matrix[:, 4])
 
-        print("\nSelected points\n")
-        print(self.selected_points)
+        # Reorganizar la matriz según los índices obtenidos
+        self.sorted_matrix_with_coord_dist = matrix[sorted_indices]
+        print('\n Selected points with distances from 0.0\n')
+        print('\n Group\t\t Reps\t X Coordinate\t Y Coordinate\t Distance\n', self.sorted_matrix_with_coord_dist)
+    
+    def selected_points_with_distances_sorted_filtered(self, matrix, columna, valor_maximo):
+        # Filtrar los datos según el valor máximo en la columna especificada
+        self.datos_filtrados = matrix[matrix[:, columna] < valor_maximo]
+        print('Selected points with distances from 0.0 filtered\n', self.datos_filtrados)
+    
+    def distancia(self, punto1, punto2):
+        return np.linalg.norm(punto1 - punto2)
+
+    def filtrarCoordenadas(self):
+        Umbral_de_distancia = 0.55  # Ajusta este valor según sea necesario
+        coordenadas = np.column_stack((self.datos_filtrados[:7,2], self.datos_filtrados[:7,3]))
+        print('\nCoordenadas pre filtradas \n', coordenadas)
+        coordenadas_filtradas = []
+        for punto in coordenadas:
+            es_nueva_coordenada = True
+            for punto_filtrado in coordenadas_filtradas:
+                # print(self.distancia(punto, punto_filtrado))
+                if self.distancia(punto, punto_filtrado) > 0.35 and self.distancia(punto, punto_filtrado) < 0.60:
+                    es_nueva_coordenada = False
+                    break
+            if es_nueva_coordenada:
+                coordenadas_filtradas.append(punto)
+        self.array_final = np.vstack(coordenadas_filtradas)
+
+        print('\nCoordenadas filtradas\n', self.array_final)
+
+    
+
 
 def main(args=None):
     rclpy.init(args=args)
