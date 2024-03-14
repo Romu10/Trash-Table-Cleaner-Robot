@@ -62,6 +62,7 @@ class TrashTableDetection(Node):
         self.selected_points_with_distances_sorted_filtered(self.sorted_matrix_with_coord_dist, columna=4, valor_maximo=3.0)
         self.filtrarCoordenadas()  #
         self.leg_distances = self.calculate_distance_to_zero(self.array_final,name_of_coordinates= 'Table Leg Distances')
+        self.leg_middle_point = self.calculate_front_legs_center_point(leg_coordinates=self.array_final)
         self.plot_data()
     
     def plot_data(self):
@@ -87,6 +88,7 @@ class TrashTableDetection(Node):
         axs[0,1].set_ylim(-0.5, 5)
 
         axs[0,2].scatter(self.array_final[:,0], self.array_final[:,1], c='green', marker='s')
+        axs[0,2].scatter(self.leg_middle_point[0], self.leg_middle_point[1], c='red', marker='.')
         axs[0,2].set_title('Legs Position Found')  
         axs[0,2].set_xlabel('X Coordinates')
         axs[0,2].set_ylabel('Y Coordinates')
@@ -160,6 +162,7 @@ class TrashTableDetection(Node):
         print('\nDistance from zero for selected points: ' + name_of_coordinates + '\n', distances)
         return distances
     
+    # Need rework
     def selected_points_with_distances_sorted(self):
         matrix = np.column_stack((self.matrix_filtered_less, self.centroids, self.distances))
         # Obtener índices que ordenan la matriz según la tercera columna
@@ -170,23 +173,25 @@ class TrashTableDetection(Node):
         print('\n Selected points with distances from 0.0\n')
         print('\n Group\t\t Reps\t X Coordinate\t Y Coordinate\t Distance\n', self.sorted_matrix_with_coord_dist)
     
+    # Need rework
     def selected_points_with_distances_sorted_filtered(self, matrix, columna, valor_maximo):
         # Filtrar los datos según el valor máximo en la columna especificada
         self.datos_filtrados = matrix[matrix[:, columna] < valor_maximo]
         print('Selected points with distances from 0.0 filtered\n', self.datos_filtrados)
     
+    # Need rework
     def distancia(self, punto1, punto2):
         return np.linalg.norm(punto1 - punto2)
 
+    # Need rework
     def filtrarCoordenadas(self):
-        Umbral_de_distancia = 0.55  # Ajusta este valor según sea necesario
         coordenadas = np.column_stack((self.datos_filtrados[:7,2], self.datos_filtrados[:7,3]))
         print('\nCoordenadas pre filtradas \n', coordenadas)
         coordenadas_filtradas = []
         for punto in coordenadas:
             es_nueva_coordenada = True
             for punto_filtrado in coordenadas_filtradas:
-                # print(self.distancia(punto, punto_filtrado))
+                print(self.distancia(punto, punto_filtrado))
                 if self.distancia(punto, punto_filtrado) > 0.35 and self.distancia(punto, punto_filtrado) < 0.60:
                     es_nueva_coordenada = False
                     break
@@ -196,7 +201,11 @@ class TrashTableDetection(Node):
 
         print('\nCoordenadas filtradas\n', self.array_final)
 
-    
+    def calculate_front_legs_center_point(self, leg_coordinates):
+        middle_point = [(leg_coordinates[0,0] + leg_coordinates[1,0]) / 2, (leg_coordinates[0,1] + leg_coordinates[1,1]) / 2]
+        print('\nCalculated Middle Point: ', middle_point)
+        return middle_point
+
 
 
 def main(args=None):
