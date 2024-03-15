@@ -59,10 +59,13 @@ class TrashTableDetection(Node):
         self.get_smaller_values_from_cluster(number_of_values=15)
         self.distances = self.calculate_distance_to_zero(coordinates= self.centroids, name_of_coordinates= 'Clusters')
         self.selected_points_with_distances_sorted()
-        self.selected_points_with_distances_sorted_filtered(self.sorted_matrix_with_coord_dist, columna=4, valor_maximo=3.0)
+        distances_average =np.mean(self.distances)
+        print('\nDistance Average: ', distances_average)
+        self.selected_points_with_distances_sorted_filtered(self.sorted_matrix_with_coord_dist, columna=4, valor_maximo=distances_average)
         self.filtrarCoordenadas()  #
         self.leg_distances = self.calculate_distance_to_zero(self.array_final,name_of_coordinates= 'Table Leg Distances')
         self.leg_middle_point = self.calculate_front_legs_center_point(leg_coordinates=self.array_final)
+        self.second_clustering()
         self.plot_data()
     
     def plot_data(self):
@@ -79,16 +82,20 @@ class TrashTableDetection(Node):
         axs[0,0].set_xlim(-3, 3)
         axs[0,0].set_ylim(-0.5, 5)
 
-        axs[0,1].scatter(self.datos_filtrados[:,2], self.datos_filtrados[:,3], c='blue', marker='o', s=50)  
-        axs[0,1].scatter(self.array_final[:,0], self.array_final[:,1], c='orange', marker='+', s=50)  
+        axs[0,1].scatter(self.datos_filtrados[:,2], self.datos_filtrados[:,3], c='blue', marker='o', s=50, label='Datos Filtrados')  
+        axs[0,1].scatter(self.array_final[:,0], self.array_final[:,1], c='orange', marker='+', s=50, label='Datos Filtrados')  
+        axs[0,1].legend()
         axs[0,1].set_title('Apply filters')  
         axs[0,1].set_xlabel('X Coordinates')
         axs[0,1].set_ylabel('Y Coordinates')
         axs[0,1].set_xlim(-3, 3)
         axs[0,1].set_ylim(-0.5, 5)
+        # Agregar notas o anotaciones
+        axs[0,1].text(-3, 1, 'Nota', fontsize=12)
 
-        axs[0,2].scatter(self.array_final[:,0], self.array_final[:,1], c='green', marker='s')
-        axs[0,2].scatter(self.leg_middle_point[0], self.leg_middle_point[1], c='red', marker='.')
+        axs[0,2].scatter(self.array_final[:,0], self.array_final[:,1], c='green', marker='s',label='Table Legs')
+        axs[0,2].scatter(self.leg_middle_point[0], self.leg_middle_point[1], c='red', marker='.', label='Front Legs Mid Point')
+        axs[0,2].legend()
         axs[0,2].set_title('Legs Position Found')  
         axs[0,2].set_xlabel('X Coordinates')
         axs[0,2].set_ylabel('Y Coordinates')
@@ -106,6 +113,14 @@ class TrashTableDetection(Node):
         axs[1,1].set_ylabel('Cluster Repetition')
         axs[1,1].set_xlim(-1, len(self.list_of_cluster_values)+1)
         axs[1,1].set_ylim(0, 50)
+
+        axs[1,2].scatter(self.array_final[:,0], self.array_final[:,1], c=self.second_kmeans.labels_.astype(float), s=50)
+        axs[1,2].scatter(self.second_centroids[:,0], self.second_centroids[:,1], c='red', marker='*', s=50)  
+        axs[1,2].set_title('Groups With Centroids')  
+        axs[1,2].set_xlabel('X Coordinates')
+        axs[1,2].set_ylabel('Y Coordinates')
+        axs[1,2].set_xlim(-3, 3)
+        axs[1,2].set_ylim(-0.5, 5)
 
         # Show the plots
         plt.show()
@@ -185,16 +200,21 @@ class TrashTableDetection(Node):
 
     # Need rework
     def filtrarCoordenadas(self):
-        coordenadas = np.column_stack((self.datos_filtrados[:7,2], self.datos_filtrados[:7,3]))
+        coordenadas = np.column_stack((self.datos_filtrados[:8,2], self.datos_filtrados[:8,3]))
         print('\nCoordenadas pre filtradas \n', coordenadas)
         coordenadas_filtradas = []
         for punto in coordenadas:
             es_nueva_coordenada = True
+            distancias_menores = 0
             for punto_filtrado in coordenadas_filtradas:
-                print(self.distancia(punto, punto_filtrado))
-                if self.distancia(punto, punto_filtrado) > 0.35 and self.distancia(punto, punto_filtrado) < 0.60:
-                    es_nueva_coordenada = False
-                    break
+                dist = self.distancia(punto, punto_filtrado)
+                print(dist)
+                if dist > 0.70:
+                    distancias_menores += 1
+                if dist < 0.50:
+                    distancias_menores += 1
+            if distancias_menores > 2:
+                es_nueva_coordenada = False
             if es_nueva_coordenada:
                 coordenadas_filtradas.append(punto)
         self.array_final = np.vstack(coordenadas_filtradas)
@@ -206,7 +226,11 @@ class TrashTableDetection(Node):
         print('\nCalculated Middle Point: ', middle_point)
         return middle_point
 
-
+    def second_clustering(self):
+        self.second_kmeans = KMeans(n_clusters=len(self.array_final)-1).fit(self.array_final)
+        self.second_centroids = self.second_kmeans.cluster_centers_
+        print('\nSecond Centroids\n', self.second_centroids)
+        print('Data lenght: %i' % len(self.second_centroids))
 
 def main(args=None):
     rclpy.init(args=args)
