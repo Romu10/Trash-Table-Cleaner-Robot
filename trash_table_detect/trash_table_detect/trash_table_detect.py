@@ -66,15 +66,29 @@ class TrashTableDetection(Node):
         self.selected_points_with_distances_sorted_filtered(self.sorted_matrix_with_coord_dist, columna=4, valor_maximo=distances_average)
         self.filter_coordinates()
         self.legs_coordinates_with_no_reps = self.verify_close_points(self.array_final, threshold=0.3)
-        self.leg_distances = self.calculate_distance_to_zero(self.legs_coordinates_with_no_reps, name_of_coordinates= 'Table Leg Distances')
+        self.leg_distances = self.calculate_distance_to_zero(coordinates=self.legs_coordinates_with_no_reps, name_of_coordinates= 'Table Leg Distances')
         self.table_square = self.find_square(points=self.legs_coordinates_with_no_reps)
 
         if len(self.table_square) > 0:
             print('Square Coordinates Posible:', len(self.table_square))
             self.selected_table_square = np.array(self.table_square[0])
             print("Square Coordinate Selected:\n", self.selected_table_square)
-            self.leg_middle_point = self.calculate_front_legs_center_point(leg_coordinates=self.legs_coordinates_with_no_reps)
+            verified_table_distance_from_zero= self.calculate_distance_to_zero(coordinates=self.selected_table_square, name_of_coordinates='Verified Table Leg Distance')
+            sorted_verified_coordinates = np.column_stack((self.selected_table_square, verified_table_distance_from_zero))
+            
+            # Obtener los índices que ordenarían las filas por la última columna
+            sorted_indices = np.argsort(sorted_verified_coordinates[:, -1])
 
+            # Usar los índices para reordenar las filas de la matriz
+            sorted_table_legs_with_distance = sorted_verified_coordinates[sorted_indices]
+
+            # Imprimir la matriz ordenada
+            print("Square Coordinate Selected Distance Sorted:\n", sorted_table_legs_with_distance)
+
+            self.leg_middle_point = self.calculate_front_legs_center_point(leg_coordinates=sorted_table_legs_with_distance)
+            self.table_center_point = self.calculate_table_center_point(leg_coordinates=sorted_table_legs_with_distance)
+            self.approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.5)
+            self.approach_path = self.create_approach_path(approach_point=self.approach_point, leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point)
             self.plot_data()
     
     def plot_data(self):
@@ -121,8 +135,7 @@ class TrashTableDetection(Node):
         # Agregar notas o anotaciones
         axs[0,1].text(-3, 1, 'Nota', fontsize=12)
 
-        axs[0,2].scatter(self.legs_coordinates_with_no_reps[:,0], self.legs_coordinates_with_no_reps[:,1], c='green', marker='s',label='Table Legs')
-        axs[0,2].scatter(self.leg_middle_point[0], self.leg_middle_point[1], c='red', marker='.', label='Front Legs Mid Point')
+        axs[0,2].scatter(self.legs_coordinates_with_no_reps[:,0], self.legs_coordinates_with_no_reps[:,1], c='red', marker='s',label='Table Legs')
         axs[0,2].legend()
         axs[0,2].set_title('Legs Position Found', color='white')  
         axs[0,2].set_xlabel('X Coordinates', color='white')
@@ -167,7 +180,12 @@ class TrashTableDetection(Node):
         axs[1,1].tick_params(axis='y', colors='white', labelcolor='white') 
 
         axs[1,2].set_title('Underneath Table Path', color='white')
-        axs[1,2].scatter(self.selected_table_square[:,0], self.selected_table_square[:,1], c='red', marker='s',label='Table Legs Verificated')
+        axs[1,2].scatter(self.selected_table_square[:,0], self.selected_table_square[:,1], c='green', marker='s')
+        axs[1,2].scatter(self.table_center_point[0], self.table_center_point[1], c='red', marker='o', label='Table Center Point')
+        axs[1,2].scatter(self.leg_middle_point[0], self.leg_middle_point[1], c='orange', marker='o', label='Front Legs Mid Point')
+        axs[1,2].scatter(self.approach_point[0], self.approach_point[1], c='yellow', marker='o', label='Approach Point')
+        axs[1,2].scatter(0, 0, c='purple', marker='^', s=75)
+        axs[1,2].plot(self.approach_path[:,0], self.approach_path[:,1], c='blue')
         axs[1,2].legend()
         axs[1,2].set_xlim(-3, 3)
         axs[1,2].set_ylim(-0.5, 5)
@@ -301,7 +319,7 @@ class TrashTableDetection(Node):
         possible_squares = []
 
         # Generate all possible permutations of points
-        point_permutations = permutations(points, 4)  # We use only permutations of length 4
+        point_permutations = permutations(points, 4)  # use only permutations of length 4
 
         # Iterate over the permutations
         for i, perm in enumerate(point_permutations, 1):
@@ -335,6 +353,44 @@ class TrashTableDetection(Node):
         middle_point = [(leg_coordinates[0,0] + leg_coordinates[1,0]) / 2, (leg_coordinates[0,1] + leg_coordinates[1,1]) / 2]
         print('\nCalculated Middle Point: ', middle_point)
         return middle_point
+    
+    def calculate_table_center_point(self, leg_coordinates):
+        # Sumar las coordenadas de los puntos en los ejes x e y
+        sum_x = sum(point[0] for point in leg_coordinates)
+        sum_y = sum(point[1] for point in leg_coordinates)
+        
+        # Calcular el promedio de las coordenadas en los ejes x e y
+        center_x = sum_x / len(leg_coordinates)
+        center_y = sum_y / len(leg_coordinates)
+        
+        # Crear y devolver el centro del cuadrado
+        square_center = [center_x, center_y]
+        print('\nCalculated Square Center:', square_center)
+        return square_center
+    
+    import numpy as np
+
+    def calculate_approach_point(self, leg_middle_point, table_center_point, approach_distance):
+        leg_middle_point = np.array(leg_middle_point)
+        table_center_point = np.array(table_center_point)
+        vector = table_center_point - leg_middle_point
+        direction = vector / np.linalg.norm(vector) 
+        new_vector = approach_distance * direction * -1
+        approach_point = leg_middle_point + new_vector
+
+        print('Approach Point:', approach_point)
+        return approach_point
+
+    
+    def create_approach_path(self, approach_point, leg_middle_point, table_center_point):
+        approach_path = np.array([
+            [0,0],
+            [approach_point[0], approach_point[1]],
+            [leg_middle_point[0], leg_middle_point[1]],
+            [table_center_point[0], table_center_point[1]]
+        ])
+        print('Approach Path:\n', approach_path)
+        return approach_path
 
 
 def main(args=None):
