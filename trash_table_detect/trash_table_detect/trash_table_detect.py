@@ -1,6 +1,5 @@
 import rclpy
 import numpy as np
-import cv2
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from sklearn.cluster import KMeans
@@ -8,7 +7,8 @@ from rclpy.node import Node
 from std_msgs.msg import String
 from sensor_msgs.msg import LaserScan
 import math
-import itertools
+from itertools import permutations
+
 
 class TrashTableDetection(Node):
 
@@ -51,6 +51,8 @@ class TrashTableDetection(Node):
         # print('\nLaser Data\n', self.data)
         # print('Data lenght: %i' % len(self.data))
 
+        ''' STARTING FILTERING THE LASER DATA '''
+        
         self.clustering()
         self.predict_cluster()
         self.calculate_cluster_error()
@@ -62,11 +64,19 @@ class TrashTableDetection(Node):
         distances_average =np.mean(self.distances)
         print('\nDistance Average: ', distances_average)
         self.selected_points_with_distances_sorted_filtered(self.sorted_matrix_with_coord_dist, columna=4, valor_maximo=distances_average)
-        self.filtrarCoordenadas()  #
-        self.leg_distances = self.calculate_distance_to_zero(self.array_final,name_of_coordinates= 'Table Leg Distances')
-        self.leg_middle_point = self.calculate_front_legs_center_point(leg_coordinates=self.array_final)
-        self.second_clustering()
-        self.plot_data()
+        self.filter_coordinates()  #
+        
+        self.legs_coordinates_with_no_reps = self.verify_close_points(self.array_final, threshold=0.3)
+        self.leg_distances = self.calculate_distance_to_zero(self.legs_coordinates_with_no_reps, name_of_coordinates= 'Table Leg Distances')
+        self.table_square = self.find_square(points=self.legs_coordinates_with_no_reps)
+
+        if len(self.table_square) > 0:
+            print('Square Coordinates Posible:', len(self.table_square))
+            self.selected_table_square = np.array(self.table_square[0])
+            print("Square Coordinate Selected:\n", self.selected_table_square)
+            self.leg_middle_point = self.calculate_front_legs_center_point(leg_coordinates=self.legs_coordinates_with_no_reps)
+
+            self.plot_data()
     
     def plot_data(self):
 
@@ -83,7 +93,7 @@ class TrashTableDetection(Node):
         axs[0,0].set_ylim(-0.5, 5)
 
         axs[0,1].scatter(self.datos_filtrados[:,2], self.datos_filtrados[:,3], c='blue', marker='o', s=50, label='Datos Filtrados')  
-        axs[0,1].scatter(self.array_final[:,0], self.array_final[:,1], c='orange', marker='+', s=50, label='Datos Filtrados')  
+        axs[0,1].scatter(self.array_final[:,0], self.array_final[:,1], c='orange', marker='+', s=50, label='Datos Filtrados') 
         axs[0,1].legend()
         axs[0,1].set_title('Apply filters')  
         axs[0,1].set_xlabel('X Coordinates')
@@ -93,7 +103,7 @@ class TrashTableDetection(Node):
         # Agregar notas o anotaciones
         axs[0,1].text(-3, 1, 'Nota', fontsize=12)
 
-        axs[0,2].scatter(self.array_final[:,0], self.array_final[:,1], c='green', marker='s',label='Table Legs')
+        axs[0,2].scatter(self.legs_coordinates_with_no_reps[:,0], self.legs_coordinates_with_no_reps[:,1], c='green', marker='s',label='Table Legs')
         axs[0,2].scatter(self.leg_middle_point[0], self.leg_middle_point[1], c='red', marker='.', label='Front Legs Mid Point')
         axs[0,2].legend()
         axs[0,2].set_title('Legs Position Found')  
@@ -114,13 +124,11 @@ class TrashTableDetection(Node):
         axs[1,1].set_xlim(-1, len(self.list_of_cluster_values)+1)
         axs[1,1].set_ylim(0, 50)
 
-        axs[1,2].scatter(self.array_final[:,0], self.array_final[:,1], c=self.second_kmeans.labels_.astype(float), s=50)
-        axs[1,2].scatter(self.second_centroids[:,0], self.second_centroids[:,1], c='red', marker='*', s=50)  
-        axs[1,2].set_title('Groups With Centroids')  
-        axs[1,2].set_xlabel('X Coordinates')
-        axs[1,2].set_ylabel('Y Coordinates')
+        axs[1,2].set_title('Square Verification')
+        axs[1,2].scatter(self.selected_table_square[:,0], self.selected_table_square[:,1], c='red', marker='s',label='Table Legs')
         axs[1,2].set_xlim(-3, 3)
-        axs[1,2].set_ylim(-0.5, 5)
+        axs[1,2].set_ylim(-0.5, 4)
+
 
         # Show the plots
         plt.show()
@@ -195,42 +203,87 @@ class TrashTableDetection(Node):
         print('Selected points with distances from 0.0 filtered\n', self.datos_filtrados)
     
     # Need rework
-    def distancia(self, punto1, punto2):
-        return np.linalg.norm(punto1 - punto2)
+    def euclidean_distances(self, point1, point2):
+        return np.linalg.norm(point1 - point2)
 
     # Need rework
-    def filtrarCoordenadas(self):
-        coordenadas = np.column_stack((self.datos_filtrados[:8,2], self.datos_filtrados[:8,3]))
-        print('\nCoordenadas pre filtradas \n', coordenadas)
-        coordenadas_filtradas = []
-        for punto in coordenadas:
-            es_nueva_coordenada = True
-            distancias_menores = 0
-            for punto_filtrado in coordenadas_filtradas:
-                dist = self.distancia(punto, punto_filtrado)
-                print(dist)
+    def filter_coordinates(self):
+        coordinates = np.column_stack((self.datos_filtrados[:,2], self.datos_filtrados[:,3]))
+        print('\ncoordinates pre filtradas \n', coordinates)
+        filtered_coordinates = []
+        for point in coordinates:
+            new_coordinate = True
+            minor_distances = 0
+            for filtered_point in filtered_coordinates:
+                dist = self.euclidean_distances(point, filtered_point)
                 if dist > 0.70:
-                    distancias_menores += 1
-                if dist < 0.50:
-                    distancias_menores += 1
-            if distancias_menores > 2:
-                es_nueva_coordenada = False
-            if es_nueva_coordenada:
-                coordenadas_filtradas.append(punto)
-        self.array_final = np.vstack(coordenadas_filtradas)
+                    minor_distances += 1
+                if dist < 0.62:
+                    minor_distances += 1
+            if minor_distances > 2:
+                new_coordinate = False
+            if new_coordinate:
+                filtered_coordinates.append(point)
+        self.array_final = np.vstack(filtered_coordinates)
+        print('\ncoordinates filtradas\n', self.array_final)
 
-        print('\nCoordenadas filtradas\n', self.array_final)
+    def verify_close_points(self, coordinates, threshold):
+        new_points = []
+        close_points = set()
+        for i in range(len(coordinates)):
+            valid_point = True
+            for j in range(i + 1, len(coordinates)):
+                distance = self.euclidean_distances(coordinates[i], coordinates[j])
+                if distance < threshold:
+                    # print(f"Points {i} and {j} are too close.")
+                    close_points.add(i)
+                    close_points.add(j)
+                    valid_point = False
+            if valid_point:
+                new_points.append(coordinates[i])
+        new_points = np.vstack(new_points)
+        print('\ncoordinates filtradas sin reps\n', new_points)
+        return np.array(new_points)
+
+    def find_square(self, points):
+        possible_squares = []
+
+        # Generate all possible permutations of points
+        point_permutations = permutations(points, 4)  # We use only permutations of length 4
+
+        # Iterate over the permutations
+        for i, perm in enumerate(point_permutations, 1):
+            combination = perm
+                
+            p1, p2, p3, p4 = combination
+
+            # Calculate the distances of the sides
+            sides = [
+                self.euclidean_distances(p1, p2),
+                self.euclidean_distances(p2, p3),
+                self.euclidean_distances(p3, p4),
+                self.euclidean_distances(p4, p1)
+            ]
+
+            # Calculate the diagonals
+            diagonals = [
+                self.euclidean_distances(p1, p3),
+                self.euclidean_distances(p2, p4)
+            ]
+
+            # Check if the distances meet the criteria
+            if all(0.60 <= distance <= 0.75 for distance in sides) and \
+            all(0.90 <= diagonal <= 1.20 for diagonal in diagonals):
+                possible_squares.append(combination)
+
+        return possible_squares
+    
 
     def calculate_front_legs_center_point(self, leg_coordinates):
         middle_point = [(leg_coordinates[0,0] + leg_coordinates[1,0]) / 2, (leg_coordinates[0,1] + leg_coordinates[1,1]) / 2]
         print('\nCalculated Middle Point: ', middle_point)
         return middle_point
 
-    def second_clustering(self):
-        self.second_kmeans = KMeans(n_clusters=len(self.array_final)-1).fit(self.array_final)
-        self.second_centroids = self.second_kmeans.cluster_centers_
-        print('\nSecond Centroids\n', self.second_centroids)
-        print('Data lenght: %i' % len(self.second_centroids))
 
 def main(args=None):
     rclpy.init(args=args)
