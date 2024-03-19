@@ -4,10 +4,12 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from sklearn.cluster import KMeans
 from rclpy.node import Node
+from geometry_msgs.msg import TransformStamped
+import tf2_ros
 from std_msgs.msg import String
 from sensor_msgs.msg import LaserScan
-import math
 from itertools import permutations
+import math
 
 
 class TrashTableDetection(Node):
@@ -24,6 +26,8 @@ class TrashTableDetection(Node):
 
         # define a ros subscription
         self.subscription = self.create_subscription(LaserScan, 'table_scan_filtered', self.laser_callback, 10)
+
+        self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
     # laser callback function
     def laser_callback(self, msg):
@@ -89,7 +93,19 @@ class TrashTableDetection(Node):
             self.table_center_point = self.calculate_table_center_point(leg_coordinates=sorted_table_legs_with_distance)
             self.approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.5)
             self.approach_path = self.create_approach_path(approach_point=self.approach_point, leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point)
-            self.plot_data()
+            
+            # Publish Table Legs Transform
+            self.publish_table_transform(frame='leg_1', x_coordinate=sorted_table_legs_with_distance[0,0], y_coordinate=sorted_table_legs_with_distance[0,1])
+            self.publish_table_transform(frame='leg_2', x_coordinate=sorted_table_legs_with_distance[1,0], y_coordinate=sorted_table_legs_with_distance[1,1])
+            self.publish_table_transform(frame='leg_3', x_coordinate=sorted_table_legs_with_distance[2,0], y_coordinate=sorted_table_legs_with_distance[2,1])
+            self.publish_table_transform(frame='leg_4', x_coordinate=sorted_table_legs_with_distance[3,0], y_coordinate=sorted_table_legs_with_distance[3,1])
+
+            # Publish Table Approach Path
+            self.publish_table_transform(frame='table_center', x_coordinate=self.table_center_point[0], y_coordinate=self.table_center_point[1])
+            self.publish_table_transform(frame='table_middle', x_coordinate=self.leg_middle_point[0], y_coordinate=self.leg_middle_point[1])
+            self.publish_table_transform(frame='approach_distance', x_coordinate=self.approach_point[0], y_coordinate=self.approach_point[1])            
+
+            #self.plot_data()
     
     def plot_data(self):
 
@@ -392,6 +408,23 @@ class TrashTableDetection(Node):
         print('Approach Path:\n', approach_path)
         return approach_path
 
+    def publish_table_transform(self, frame, x_coordinate, y_coordinate):
+        tf_msg = TransformStamped()
+
+        # Configurar los valores de la transformación
+        tf_msg.header.stamp = self.get_clock().now().to_msg()
+        tf_msg.header.frame_id = 'robot_front_laser_base_link'
+        tf_msg.child_frame_id = frame
+        tf_msg.transform.translation.y = x_coordinate
+        tf_msg.transform.translation.x = y_coordinate
+        tf_msg.transform.translation.z = 0.0
+        tf_msg.transform.rotation.x = 0.0
+        tf_msg.transform.rotation.y = 0.0
+        tf_msg.transform.rotation.z = 0.0
+        tf_msg.transform.rotation.w = 1.0
+
+        # Publicar la transformación
+        self.tf_broadcaster.sendTransform(tf_msg)
 
 def main(args=None):
     rclpy.init(args=args)
