@@ -138,12 +138,15 @@ class TrashTableDetection(Node):
         axs[0,2].tick_params(axis='x', colors='white', labelcolor='white') 
         axs[0,2].tick_params(axis='y', colors='white', labelcolor='white') 
 
+        axs[1,0].scatter(self.krango, self.sse, c='red', marker='o', label='K Value')
         axs[1,0].plot(self.krango, self.sse, c='blue')
+        axs[1,0].legend()
         axs[1,0].set_title('Sum of Square Error', color='white')
         axs[1,0].set_xlabel('K Value', color='white')
         axs[1,0].set_ylabel('Error', color='white')
         axs[1,0].set_facecolor('black')
         axs[1,0].grid(False)
+        axs[1,0].locator_params(axis='x', nbins=15) 
         axs[1,0].spines['bottom'].set_color('white')  # Eje x
         axs[1,0].spines['left'].set_color('white')
         axs[1,0].tick_params(axis='x', colors='white', labelcolor='white') 
@@ -153,10 +156,11 @@ class TrashTableDetection(Node):
         axs[1,1].set_title('Group Cluster Repetitions', color='white')
         axs[1,1].set_xlabel('Cluster Group', color='white')
         axs[1,1].set_ylabel('Cluster Repetition', color='white')
-        axs[1,1].set_xlim(-1, len(self.list_of_cluster_values)+1)
+        axs[1,1].set_xlim(-1, len(self.list_of_cluster_values))
         axs[1,1].set_ylim(0, 50)
         axs[1,1].set_facecolor('black')
         axs[1,1].grid(False)
+        axs[1,0].locator_params(axis='x', nbins=len(self.list_of_cluster_values)) 
         axs[1,1].spines['bottom'].set_color('white')  # Eje x
         axs[1,1].spines['left'].set_color('white')
         axs[1,1].tick_params(axis='x', colors='white', labelcolor='white') 
