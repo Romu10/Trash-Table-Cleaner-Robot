@@ -319,7 +319,18 @@ class TrashTableDetection(Node):
         return distances
     
     def selected_points_with_distances_sorted(self, display):
-        matrix = np.column_stack((self.matrix_filtered_less, self.centroids, self.distances))
+        
+        if display:
+            print("Dimensiones de la primera matriz:", self.matrix_filtered_less.shape)
+            print("Dimensiones de la segunda matriz:", self.centroids.shape)
+            print("Dimensiones de la tercera matriz:", self.distances.shape)
+        #matrix = np.column_stack((self.matrix_filtered_less, self.centroids, self.distances))
+
+        num_rows_matrix_filtered_less = self.matrix_filtered_less.shape[0]
+        centroids_selected = self.centroids[:num_rows_matrix_filtered_less]
+        distances_selected = self.distances[:num_rows_matrix_filtered_less]
+        matrix = np.column_stack((self.matrix_filtered_less, centroids_selected, distances_selected))
+        
         sorted_indices = np.argsort(matrix[:, 4])
         self.sorted_matrix_with_coord_dist = matrix[sorted_indices]
         if display:
