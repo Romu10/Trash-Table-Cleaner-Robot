@@ -11,7 +11,6 @@ from sensor_msgs.msg import LaserScan
 from itertools import permutations
 import math
 
-
 class TrashTableDetection(Node):
 
     def __init__(self):
@@ -27,6 +26,7 @@ class TrashTableDetection(Node):
         # define a ros subscription
         self.subscription = self.create_subscription(LaserScan, 'table_scan_filtered', self.laser_callback, 10)
 
+        # define the tf broadcaster to publish tf
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
     # laser callback function
@@ -153,7 +153,6 @@ class TrashTableDetection(Node):
         
         plt.subplots_adjust(wspace=0.4, hspace=0.6)
         fig.patch.set_facecolor('black')
-        
 
         axs[0,0].scatter(self.data[:,0], self.data[:,1], c=self.kmeans.labels_.astype(float), s=50, label='Data Groups')
         axs[0,0].scatter(self.centroids[:,0], self.centroids[:,1], c='red', marker='*', s=50, label='Groups Centroids')  

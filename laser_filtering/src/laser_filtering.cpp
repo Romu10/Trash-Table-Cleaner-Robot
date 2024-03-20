@@ -42,8 +42,8 @@ private:
             double angle_increment = msg->angle_increment;
 
             // Calculate the min and max angle for the desired ranges in front of the robot
-            double angle_min_range = -M_PI / 6.0;  // rad 
-            double angle_max_range = M_PI / 6.0;   // rad
+            double angle_min_range = -M_PI / 4.0;  // rad 
+            double angle_max_range = M_PI / 4.0;   // rad
 
             // Create a new msg for LaserScan to save the reading in the desired range
             sensor_msgs::msg::LaserScan laser_in_range_msg;
