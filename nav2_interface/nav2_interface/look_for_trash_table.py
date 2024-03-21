@@ -7,7 +7,7 @@ from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
 from rclpy.duration import Duration
 import rclpy
-from std_srvs.srv import Trigger
+from detection_interfaces.srv import DetectTableLegs
 
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
@@ -39,14 +39,14 @@ class Nav2TaskManager(Node):
         super().__init__('nav2_task_manager')
 
         # create a service client
-        self.service_client = self.create_client(Trigger, 'find_table_srv')
+        self.service_client = self.create_client(DetectTableLegs, 'find_table_srv')
 
         # wait until service gets online
         while not self.service_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('service not available, waiting again...')
         
         # define the variable to send the request
-        self.req = Trigger.Request()
+        self.req = DetectTableLegs.Request()
 
         # define time to look for table in each place
         
@@ -144,11 +144,19 @@ def main():
 
         # Do something if result depending on result status
         if result: 
-            print('Looking for Table in this Place')
+            print('Looking for Table in this Place\n')
             time.sleep(10)
             table_detection = manager.send_request()
             if table_detection.success:
-                print('table detected')
+                print('Table detected\n')
+                print('Waypoints are:\n')
+                print('Table Center Point x: ', table_detection.table_center_point.x)
+                print('Table Center Point y: ', table_detection.table_center_point.y)
+                print('Table Middle Point x: ', table_detection.table_middle_point.x)
+                print('Table Middle Point y: ', table_detection.table_middle_point.y)
+                print('Approach Distance Point x: ', table_detection.approach_distance_point.x)
+                print('Approach Distance Point y: ', table_detection.approach_distance_point.y)
+                
                 break
             else: 
                 print('tale not detected')
