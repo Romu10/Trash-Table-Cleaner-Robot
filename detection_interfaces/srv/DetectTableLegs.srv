@@ -1,0 +1,8 @@
+
+---
+bool success
+string message
+geometry_msgs/Point  table_center_point
+geometry_msgs/Point  table_middle_point
+geometry_msgs/Point  approach_distance_point
+

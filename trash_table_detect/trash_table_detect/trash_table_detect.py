@@ -10,6 +10,7 @@ from std_msgs.msg import String
 from sensor_msgs.msg import LaserScan
 from itertools import permutations
 from std_srvs.srv import Trigger
+from detection_interfaces.srv import DetectTableLegs
 import math
 import time
 
@@ -29,7 +30,7 @@ class TrashTableDetection(Node):
         self.subscription = self.create_subscription(LaserScan, 'table_scan_filtered', self.laser_callback, 10)
 
         # create a service
-        self.srv = self.create_service(Trigger, 'find_table_srv', self.find_table_srv)
+        self.srv = self.create_service(DetectTableLegs, 'find_table_srv', self.find_table_srv)
 
         # define the tf broadcaster to publish tf
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
@@ -43,6 +44,13 @@ class TrashTableDetection(Node):
         if self.found_table:
             response.success = True
             response.message = '¡Table Found!'
+            response.table_center_point.x = round(self.table_center_point[0], 2)
+            response.table_center_point.y = round(self.table_center_point[1], 2)
+            response.table_middle_point.x = round(self.leg_middle_point[0],2)
+            response.table_middle_point.y = round(self.leg_middle_point[1],2)
+            response.approach_distance_point.x = round(self.approach_point[0],2)
+            response.approach_distance_point.y = round(self.approach_point[1],2)
+
         else:
             response.success = False
             response.message = '¡Table Not Found!'
