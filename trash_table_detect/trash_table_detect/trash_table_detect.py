@@ -10,6 +10,7 @@ from std_msgs.msg import String
 from sensor_msgs.msg import LaserScan
 from itertools import permutations
 from std_srvs.srv import Trigger
+from nav_msgs.msg import Odometry
 from detection_interfaces.srv import DetectTableLegs
 import math
 import time
@@ -26,8 +27,11 @@ class TrashTableDetection(Node):
         # define k number of groups for clustering
         self.k = 15
 
-        # define a ros subscription
-        self.subscription = self.create_subscription(LaserScan, 'table_scan_filtered', self.laser_callback, 10)
+        # define a subscription for laser scan
+        self.laserscan_subscription = self.create_subscription(LaserScan, 'table_scan_filtered', self.laser_callback, 10)
+
+        # define a subsription for odom
+        self.odom_subscription = self.create_subscription(Odometry, 'odom', self.odom_callback, 10)
 
         # create a service
         self.srv = self.create_service(DetectTableLegs, 'find_table_srv', self.find_table_srv)
@@ -55,7 +59,26 @@ class TrashTableDetection(Node):
             response.success = False
             response.message = '¡Table Not Found!'
         return response
+    
+    import numpy as np
 
+    def calculate_yaw(self, q_x, q_y, q_z, q_w):
+        yaw = 2 * np.arctan2(np.sqrt(q_x**2 + q_y**2 + q_z**2), q_w)
+        return yaw
+
+    def odom_callback(self, msg):
+        
+        # get robots positions
+        self.robot_position = msg.pose.pose.position
+        
+        # get robots orientation in terms of quaternions
+        q_x = msg.pose.pose.orientation.x
+        q_y = msg.pose.pose.orientation.y
+        q_z = msg.pose.pose.orientation.z
+        q_w = msg.pose.pose.orientation.w
+
+        # Calculate robot yaw in degree
+        self.robot_yaw = round(self.calculate_yaw(q_x, q_y, q_z, q_w), 2)
 
     # laser callback function
     def laser_callback(self, msg):
