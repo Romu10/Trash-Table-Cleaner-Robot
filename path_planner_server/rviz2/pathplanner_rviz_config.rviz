@@ -110,20 +110,21 @@ Visualization Manager:
           odom:
             robot_base_footprint:
               base_link:
-                robot_base_link:
-                  robot_evelator_base_link:
+                {}
+              robot_base_link:
+                robot_evelator_base_link:
+                  {}
+                robot_front_cover_link:
+                  robot_base_docking_contact_link:
                     {}
-                  robot_front_cover_link:
-                    robot_base_docking_contact_link:
-                      {}
-                  robot_front_laser_base_link:
-                    {}
-                  robot_omni_backwheel_link:
-                    {}
-                  robot_omni_front_leftwheel_link:
-                    {}
-                  robot_omni_front_rightwheel_link:
-                    {}
+                robot_front_laser_base_link:
+                  {}
+                robot_omni_backwheel_link:
+                  {}
+                robot_omni_front_leftwheel_link:
+                  {}
+                robot_omni_front_rightwheel_link:
+                  {}
               robot_top_cover_link:
                 {}
       Update Interval: 0
@@ -176,8 +177,8 @@ Visualization Manager:
       Position Transformer: XYZ
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.05000000074505806
-      Style: Flat Squares
+      Size (m): 0.07000000029802322
+      Style: Boxes
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -384,6 +385,40 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /local_costmap/published_footprint
       Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz_default_plugins/LaserScan
+      Color: 0; 0; 255
+      Color Transformer: FlatColor
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 4096
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: LaserScanFiltered
+      Position Transformer: XYZ
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.09000000357627869
+      Style: Boxes
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /table_scan_filtered
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -430,16 +465,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 21.57439613342285
+      Distance: 25.537446975708008
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 3.493248701095581
-        Y: -3.20814847946167
-        Z: -0.16128812730312347
+        X: 3.4163358211517334
+        Y: -2.6603786945343018
+        Z: -0.15825429558753967
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false

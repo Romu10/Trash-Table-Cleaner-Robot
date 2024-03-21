@@ -7,6 +7,7 @@ from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
 from rclpy.duration import Duration
 import rclpy
+from std_srvs.srv import Trigger
 
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
@@ -36,7 +37,25 @@ class Nav2TaskManager(Node):
 
     def __init__(self):
         super().__init__('nav2_task_manager')
- 
+
+        # create a service client
+        self.service_client = self.create_client(Trigger, 'find_table_srv')
+
+        # wait until service gets online
+        while not self.service_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('service not available, waiting again...')
+        
+        # define the variable to send the request
+        self.req = Trigger.Request()
+
+        # define time to look for table in each place
+        
+        
+    def send_request(self):
+        self.future = self.service_client.call_async(self.req)
+        rclpy.spin_until_future_complete(self, self.future)
+        return self.future.result()
+    
     def setRobotInitPosition(self, navigator, location, position, frame = 'map'):
         initial_pose = PoseStamped()
         initial_pose.header.frame_id = 'map'
@@ -45,7 +64,7 @@ class Nav2TaskManager(Node):
         initial_pose.pose.position.y = position[1]
         initial_pose.pose.orientation.z = position[2]
         initial_pose.pose.orientation.w = position[3]
-        print('Set initial position at ' + location + '.')
+        print('Set initial position at ' + location+'.')
         navigator.setInitialPose(initial_pose)
 
     def goToPosition(self, navigator, location, position, frame = 'map'):
@@ -125,7 +144,14 @@ def main():
 
         # Do something if result depending on result status
         if result: 
-            print('Call the detection service')
+            print('Looking for Table in this Place')
+            time.sleep(10)
+            table_detection = manager.send_request()
+            if table_detection.success:
+                print('table detected')
+                break
+            else: 
+                print('tale not detected')
 
     while not navigator.isTaskComplete():
         pass
