@@ -72,18 +72,24 @@ class Nav2TaskManager(Node):
 
     def getTaskResult(self, navigator, request_table_location):
         result = navigator.getResult()
+        task_result = False
         if result == TaskResult.SUCCEEDED:
+            task_result = True
             print('Arrived successfully to ' + request_table_location + ' .')
 
         elif result == TaskResult.CANCELED:
+            task_result = False
             print('Task at ' + request_table_location + ' was canceled. Returning to staging point...')\
 
             # Return to starter position
             self.goToPosition(navigator, 'Start Position', robot_init_position['start_position'])
 
         elif result == TaskResult.FAILED:
+            task_result = False
             print('Task at ' + request_table_location + ' failed!')
             exit(-1)
+
+        return task_result
 
 def main():
 
@@ -115,7 +121,11 @@ def main():
         manager.arrivalTime(navigator, request_table_location)
 
         # Get Task Result 
-        manager.getTaskResult(navigator, request_table_location)
+        result = manager.getTaskResult(navigator, request_table_location)
+
+        # Do something if result depending on result status
+        if result: 
+            print('Call the detection service')
 
     while not navigator.isTaskComplete():
         pass

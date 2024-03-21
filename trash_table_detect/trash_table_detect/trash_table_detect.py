@@ -1,4 +1,4 @@
-import rclpy
+import rclpy 
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -9,7 +9,9 @@ import tf2_ros
 from std_msgs.msg import String
 from sensor_msgs.msg import LaserScan
 from itertools import permutations
+from std_srvs.srv import Trigger
 import math
+import time
 
 class TrashTableDetection(Node):
 
@@ -26,8 +28,26 @@ class TrashTableDetection(Node):
         # define a ros subscription
         self.subscription = self.create_subscription(LaserScan, 'table_scan_filtered', self.laser_callback, 10)
 
+        # create a service
+        self.srv = self.create_service(Trigger, 'find_table_srv', self.find_table_srv)
+
         # define the tf broadcaster to publish tf
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
+
+        self.found_table = False
+
+    def find_table_srv(self, request, response):
+
+        self.get_logger().info('¡Servicio llamado! Leyendo el LaserScan durante 10 segundos...')
+        
+        if self.found_table:
+            response.success = True
+            response.message = '¡Table Found!'
+        else:
+            response.success = False
+            response.message = '¡Table Not Found!'
+        return response
+
 
     # laser callback function
     def laser_callback(self, msg):
@@ -123,7 +143,7 @@ class TrashTableDetection(Node):
             self.table_center_point = self.calculate_table_center_point(leg_coordinates=sorted_table_legs_with_distance, display=False)
             self.approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.5, display=False)
             self.approach_path = self.create_approach_path(approach_point=self.approach_point, leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, display=False)
-            
+
             # Publish Table Legs Transform
             self.publish_table_transform(frame='leg_1', x_coordinate=sorted_table_legs_with_distance[0,0], y_coordinate=sorted_table_legs_with_distance[0,1])
             self.publish_table_transform(frame='leg_2', x_coordinate=sorted_table_legs_with_distance[1,0], y_coordinate=sorted_table_legs_with_distance[1,1])
@@ -140,6 +160,9 @@ class TrashTableDetection(Node):
 
             # inform table found 
             print('Trash Table Detected')
+
+            # update service 
+            self.found_table = True
 
         else:
 
