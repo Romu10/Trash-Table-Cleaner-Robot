@@ -1,0 +1,11 @@
+# Request
+geometry_msgs/Point  table_center_point
+geometry_msgs/Point  table_middle_point
+geometry_msgs/Point  approach_distance_point
+---
+# Result
+bool success
+---
+# Feedback
+string current_waypoint
+geometry_msgs/Point  current_position
