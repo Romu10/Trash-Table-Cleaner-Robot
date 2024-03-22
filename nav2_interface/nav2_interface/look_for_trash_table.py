@@ -8,6 +8,8 @@ from geometry_msgs.msg import PoseStamped
 from rclpy.duration import Duration
 import rclpy
 from detection_interfaces.srv import DetectTableLegs
+from detection_interfaces.action import ApproachTable
+from rclpy.action import ActionClient
 
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
@@ -43,15 +45,34 @@ class Nav2TaskManager(Node):
 
         # wait until service gets online
         while not self.service_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('service not available, waiting again...')
+            self.get_logger().info('Table Detection service not available, waiting again...')
         
         # define the variable to send the request
         self.req = DetectTableLegs.Request()
 
-        # define time to look for table in each place
+        # define the action service
+        self.action_client = ActionClient(self, ApproachTable, 'approach_table_as')
+
+        # wait until action service gets online
+        while not self.action_client.wait_for_server(timeout_sec=1.0):
+            print('Approach Controller action not available, waiting again...')
         
+    def send_approach_request(self, waypoint_coordinate_x, waypoint_coordinate_y, waypoint_name):
+        # define the goal msg
+        waypoint_goal = ApproachTable.Goal()
+
+        # pass received coordinates if table is detected
+        waypoint_goal.goal_position.x = waypoint_coordinate_x
+        waypoint_goal.goal_position.y = waypoint_coordinate_y
+
+        # pass waypoint name either
+        waypoint_goal.goal_name = waypoint_name
         
-    def send_request(self):
+        self.action_client.wait_for_server()
+
+        return self.action_client.send_goal_async(waypoint_goal)
+
+    def send_detection_request(self):
         self.future = self.service_client.call_async(self.req)
         rclpy.spin_until_future_complete(self, self.future)
         return self.future.result()
@@ -129,7 +150,8 @@ def main():
     request_table_location = 'position_'
 
     # Iterate over a sequence from 1 to 6
-    for i in range(1, 7):
+    i = 1
+    while i < 6:
         # Define the goal position 
         request_table_location = 'position_' + str(i)
 
@@ -146,7 +168,7 @@ def main():
         if result: 
             print('Looking for Table in this Place\n')
             time.sleep(10)
-            table_detection = manager.send_request()
+            table_detection = manager.send_detection_request()
             if table_detection.success:
                 print('Table detected\n')
                 print('Waypoints are:\n')
@@ -157,9 +179,34 @@ def main():
                 print('Approach Distance Point x: ', table_detection.approach_distance_point.x)
                 print('Approach Distance Point y: ', table_detection.approach_distance_point.y)
                 
-                break
+                # if table detected, go to the approach point
+                reach_approach_point = manager.send_approach_request(waypoint_coordinate_x=table_detection.approach_distance_point.x,
+                                                                        waypoint_coordinate_y= table_detection.approach_distance_point.y,
+                                                                            waypoint_name='Approach Point')
+                while not reach_approach_point:
+                    rclpy.spin_until_future_complete(manager, reach_approach_point)
+                
+                # if reached approach point, go to middle point 
+                # if reach_approach_point:
+                #    print('Approach Reached')
+                #    reach_middle_point = manager.send_approach_request(waypoint_coordinate_x= table_detection.table_middle_point.x,
+                #                                                            waypoint_coordinate_y= table_detection.table_middle_point.y,
+                #                                                                waypoint_name='Middle Point')
+                # if reached middle point, go to center point
+                #    if reach_middle_point:
+                #        reach_center_point = manager.send_approach_request(waypoint_coordinate_x= table_detection.table_center_point.x,
+                #                                                            waypoint_coordinate_y= table_detection.table_center_point.y,
+                #                                                                waypoint_name='Center Point')
+                # break
+
+                # if table detected and failed while approaching to table, restart the process                                                        
+                # else:
+                #    print('Process failed while approaching to table, repeting process.')
+                
             else: 
                 print('tale not detected')
+                # update i in order to go to the next position
+                i += 1
 
     while not navigator.isTaskComplete():
         pass

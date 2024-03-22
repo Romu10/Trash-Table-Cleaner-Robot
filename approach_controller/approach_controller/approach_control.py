@@ -114,10 +114,6 @@ class ApproachController(Node):
             result = ApproachTable.Result()
             result.success = False
             
-        
-        
-        
-
         return result
 
     def calculate_yaw(self, q_x, q_y, q_z, q_w):

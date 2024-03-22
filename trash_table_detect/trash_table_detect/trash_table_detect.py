@@ -29,7 +29,7 @@ class TrashTableDetection(Node):
         # define a subscription for laser scan
         self.laserscan_subscription = self.create_subscription(LaserScan, 'table_scan_filtered', self.laser_callback, 10)
 
-        # create a service
+        # define the service
         self.srv = self.create_service(DetectTableLegs, 'find_table_srv', self.find_table_srv)
 
         # define the tf broadcaster to publish tf
