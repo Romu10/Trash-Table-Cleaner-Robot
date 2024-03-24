@@ -10,6 +10,7 @@ import rclpy
 from detection_interfaces.srv import DetectTableLegs
 from detection_interfaces.action import ApproachTable
 from rclpy.action import ActionClient
+from action_msgs.msg import GoalStatus
 
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
@@ -49,28 +50,6 @@ class Nav2TaskManager(Node):
         
         # define the variable to send the request
         self.req = DetectTableLegs.Request()
-
-        # define the action service
-        self.action_client = ActionClient(self, ApproachTable, 'approach_table_as')
-
-        # wait until action service gets online
-        while not self.action_client.wait_for_server(timeout_sec=1.0):
-            print('Approach Controller action not available, waiting again...')
-        
-    def send_approach_request(self, waypoint_coordinate_x, waypoint_coordinate_y, waypoint_name):
-        # define the goal msg
-        waypoint_goal = ApproachTable.Goal()
-
-        # pass received coordinates if table is detected
-        waypoint_goal.goal_position.x = waypoint_coordinate_x
-        waypoint_goal.goal_position.y = waypoint_coordinate_y
-
-        # pass waypoint name either
-        waypoint_goal.goal_name = waypoint_name
-        
-        self.action_client.wait_for_server()
-
-        return self.action_client.send_goal_async(waypoint_goal)
 
     def send_detection_request(self):
         self.future = self.service_client.call_async(self.req)
@@ -131,11 +110,80 @@ class Nav2TaskManager(Node):
 
         return task_result
 
+class ApproachController(Node):
+
+    def __init__(self):
+        super().__init__('approach_controller_client')
+
+        # define the action service
+        self.action_client = ActionClient(self, ApproachTable, 'approach_table_as')
+
+        # wait until action service gets online
+        while not self.action_client.wait_for_server(timeout_sec=1.0):
+            print('Approach Controller action not available, waiting again...')
+
+        # action flag
+        self.action_success = False
+
+    def goal_response_callback(self, future):
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.get_logger().info('Goal rejected :(')
+            return
+
+        self.get_logger().info('Goal accepted :)')
+
+        self._get_result_future = goal_handle.get_result_async()
+        self._get_result_future.add_done_callback(self.get_result_callback)
+    
+    def get_result_callback(self, future):
+        result = future.result().result
+        status = future.result().status
+        if status == GoalStatus.STATUS_SUCCEEDED:
+            if result.success:
+                self.get_logger().info('Goal succeeded !')
+                self.action_success = True
+            else:
+                self.get_logger().info('Goal failed !')
+                self.action_success = False
+
+        else:
+            self.get_logger().info('Goal failed with status: {0}'.format(status))
+
+    def send_approach_request(self, waypoint_coordinate_x, waypoint_coordinate_y, waypoint_name):
+        
+        # wait until action service is online
+        self.get_logger().info('Waiting for action server...')
+        self.action_client.wait_for_server()
+       
+        # define the goal msg
+        waypoint_goal = ApproachTable.Goal()
+
+        # pass received coordinates if table is detected
+        waypoint_goal.goal_position.x = waypoint_coordinate_x
+        waypoint_goal.goal_position.y = waypoint_coordinate_y
+
+        # pass waypoint name either
+        waypoint_goal.goal_name = waypoint_name
+        
+        # inform that the goal was sent
+        self.get_logger().info('Sending goal request...')
+
+        # send goal
+        self.send_goal_future = self.action_client.send_goal_async(waypoint_goal)
+
+        # get the response callback
+        self.send_goal_future.add_done_callback(self.goal_response_callback)
+    
+    def get_action_result(self):
+        return self.action_success
+
 def main():
 
     rclpy.init()
     navigator = BasicNavigator()
     manager = Nav2TaskManager()
+    controller = ApproachController()
 
     # Set your demo's initial pose
     manager.setRobotInitPosition(navigator, 'Start Position', robot_init_position['start_position'])
@@ -178,20 +226,29 @@ def main():
                 print('Table Middle Point y: ', table_detection.table_middle_point.y)
                 print('Approach Distance Point x: ', table_detection.approach_distance_point.x)
                 print('Approach Distance Point y: ', table_detection.approach_distance_point.y)
-                
+
                 # if table detected, go to the approach point
-                reach_approach_point = manager.send_approach_request(waypoint_coordinate_x=table_detection.approach_distance_point.x,
-                                                                        waypoint_coordinate_y= table_detection.approach_distance_point.y,
-                                                                            waypoint_name='Approach Point')
-                while not reach_approach_point:
-                    rclpy.spin_until_future_complete(manager, reach_approach_point)
+                controller.send_approach_request(waypoint_coordinate_x=table_detection.approach_distance_point.x,
+                                                    waypoint_coordinate_y= table_detection.approach_distance_point.y,
+                                                        waypoint_name='Approach Point')
+                first_pos = False
+                # wait until the robot reach the approach point
+                while not first_pos:
+                    first_pos = controller.get_action_result()
+                    rclpy.spin_once(controller)
                 
-                # if reached approach point, go to middle point 
-                # if reach_approach_point:
-                #    print('Approach Reached')
-                #    reach_middle_point = manager.send_approach_request(waypoint_coordinate_x= table_detection.table_middle_point.x,
-                #                                                            waypoint_coordinate_y= table_detection.table_middle_point.y,
-                #                                                                waypoint_name='Middle Point')
+                # if robot reached the approach point, then go to the middle point
+                if first_pos:
+                    controller.send_approach_request(waypoint_coordinate_x=table_detection.table_middle_point.x,
+                                                    waypoint_coordinate_y= table_detection.table_middle_point.y,
+                                                        waypoint_name='Middle Point')
+                    second_pos = False
+                    # wait until robot reach the middle point
+                    while not second_pos:
+                        second_pos = controller.get_action_result()
+                        rclpy.spin_once(controller)
+            
+        break        
                 # if reached middle point, go to center point
                 #    if reach_middle_point:
                 #        reach_center_point = manager.send_approach_request(waypoint_coordinate_x= table_detection.table_center_point.x,
@@ -203,10 +260,10 @@ def main():
                 # else:
                 #    print('Process failed while approaching to table, repeting process.')
                 
-            else: 
-                print('tale not detected')
+            # else: 
+            #    print('tale not detected')
                 # update i in order to go to the next position
-                i += 1
+            #    i += 1
 
     while not navigator.isTaskComplete():
         pass

@@ -1,5 +1,8 @@
 import rclpy 
 from rclpy.node import Node
+from rclpy.executors import MultiThreadedExecutor
+from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from detection_interfaces.srv import DetectTableLegs
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
@@ -40,9 +43,30 @@ class ApproachController(Node):
         self._pub_cmd_vel = self.create_publisher(Twist, 'diffbot_base_controller/cmd_vel_unstamped', 10)
 
         # create an action service
-        self._action_server = ActionServer(self, ApproachTable, 'approach_table_as', self.goal_callback)
-    
-    def goal_callback(self, goal_handle):
+        self._action_server = ActionServer(self, ApproachTable, 'approach_table_as',  
+                                            execute_callback=self. execute_callback,
+                                            callback_group=ReentrantCallbackGroup(),
+                                            goal_callback=self.goal_callback,
+                                            cancel_callback=self.cancel_callback)
+
+        self.get_logger().info('Approach Controller Action Service Online...')
+
+    def goal_callback(self, goal_request):
+        """Accept or reject a client request to begin an action."""
+        # This server allows multiple goals in parallel
+        self.get_logger().info('Received goal request')
+        return GoalResponse.ACCEPT
+
+    def cancel_callback(self, goal_handle):
+        """Accept or reject a client request to cancel an action."""
+        self.get_logger().info('Received cancel request')
+        return CancelResponse.ACCEPT
+
+    def destroy(self):
+        self._action_server.destroy()
+        super().destroy_node()
+        
+    def  execute_callback(self, goal_handle):
         self.get_logger().info('Executing goal...')
 
         # helper variables
@@ -50,51 +74,60 @@ class ApproachController(Node):
 
         # define desired position and errors
         self._des_pos = goal_handle.request.goal_position
+        
+        # sum the actual position of the robot with the calculated position of each point to
+        self._des_pos.x = self._des_pos.x + self._position.x
+        self._des_pos.y = self._des_pos.y + self._position.y
+
         desired_yaw = math.atan2(self._des_pos.y - self._position.y, self._des_pos.x - self._position.x)
         err_pos = math.sqrt(pow(self._des_pos.y - self._position.y, 2) + pow(self._des_pos.x - self._position.x, 2))
         err_yaw = desired_yaw - self._yaw
 
         # perform task
-        while err_pos > self._dist_precision and success:
-            # update vars
+        while success:
+            # Update variables
             desired_yaw = math.atan2(self._des_pos.y - self._position.y, self._des_pos.x - self._position.x)
             err_yaw = desired_yaw - self._yaw
             err_pos = math.sqrt(pow(self._des_pos.y - self._position.y, 2) + pow(self._des_pos.x - self._position.x, 2))
-            # print vars status
+
+            # Check if the position error is within the precision threshold
+            if err_pos < self._dist_precision:
+                break  # Exit the loop if the position error is within the precision threshold
+
+            # Print variable status
             self.get_logger().info("Current Yaw: %s" % str(self._yaw))
             self.get_logger().info("Desired Yaw: %s" % str(desired_yaw))
             self.get_logger().info("Error Yaw: %s" % str(err_yaw))
             self.get_logger().info("Error Pos: %s" % str(err_pos))
 
-            # logic goes here
+            # Logic goes here
             if goal_handle.is_cancel_requested:
-                # cancelled
+                # Cancelled
                 self.get_logger().info("The goal has been cancelled/preempted")
                 goal_handle.cancelled()
                 success = False
             elif math.fabs(err_yaw) > self._yaw_precision:
-                # fix yaw
+                # Fix yaw
                 self.get_logger().info("fix yaw")
                 self._state = 'fix yaw'
                 twist_msg = Twist()
                 twist_msg.angular.z = 0.3 if err_yaw > 0 else -0.3
                 self._pub_cmd_vel.publish(twist_msg)
             else:
-                # go to point
+                # Go to point
                 self.get_logger().info("going to point: %s" % str(goal_handle.request.goal_name))
                 self._state = goal_handle.request.goal_name
                 twist_msg = Twist()
                 twist_msg.linear.x = 0.20
                 twist_msg.angular.z = 0.00
-                # twist_msg.angular.z = 0.1 if err_yaw > 0 else -0.1
                 self._pub_cmd_vel.publish(twist_msg)
 
-            # use this to send feedback
+            # Use this to send feedback
             feedback_msg = ApproachTable.Feedback()
             feedback_msg.state = goal_handle.request.goal_name
             feedback_msg.current_position = self._position
 
-            # update external variables
+            # Update external variables
             rclpy.spin_once(self)
             
         # stop
@@ -107,13 +140,17 @@ class ApproachController(Node):
         if success:
             # use this to indicate that the goal succeed
             goal_handle.succeed()
-
             result = ApproachTable.Result()
             result.success = True
+            self.get_logger().info("goal reached")
+
         else:
+            # use this to indicate that the goal failed
+            goal_handle.failed()
             result = ApproachTable.Result()
             result.success = False
-            
+            self.get_logger().info("goal failed")
+        
         return result
 
     def calculate_yaw(self, q_x, q_y, q_z, q_w):
@@ -166,7 +203,7 @@ def main(args=None):
 
     rclpy.spin(approach_controller)
 
-    approach_controller.destroy_node()
+    approach_controller.destroy()
     rclpy.shutdown()
 
 if __name__ == '__main__':
