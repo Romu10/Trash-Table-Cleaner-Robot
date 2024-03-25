@@ -37,7 +37,8 @@ class ApproachController(Node):
         #self.laserscan_subscription = self.create_subscription(LaserScan, 'scan', self.laser_callback, 10)
 
         # define a subsription for odom
-        self.odom_subscription = self.create_subscription(Odometry, 'odom', self.odom_callback, 10)
+        self.odom_subscription = self.create_subscription(Odometry, 'odom', self.odom_callback, 10, 
+                                            callback_group=ReentrantCallbackGroup())
 
         # define a publisher for cmd
         self._pub_cmd_vel = self.create_publisher(Twist, 'diffbot_base_controller/cmd_vel_unstamped', 10)
@@ -126,9 +127,6 @@ class ApproachController(Node):
             feedback_msg = ApproachTable.Feedback()
             feedback_msg.state = goal_handle.request.goal_name
             feedback_msg.current_position = self._position
-
-            # Update external variables
-            rclpy.spin_once(self)
             
         # stop
         twist_msg = Twist()
@@ -150,7 +148,7 @@ class ApproachController(Node):
             result = ApproachTable.Result()
             result.success = False
             self.get_logger().info("goal failed")
-        
+
         return result
 
     def calculate_yaw(self, q_x, q_y, q_z, q_w):
@@ -201,7 +199,10 @@ def main(args=None):
 
     approach_controller = ApproachController()
 
-    rclpy.spin(approach_controller)
+    # Use a MultiThreadedExecutor to enable processing goals concurrently
+    executor = MultiThreadedExecutor()
+
+    rclpy.spin(approach_controller, executor=executor)
 
     approach_controller.destroy()
     rclpy.shutdown()
