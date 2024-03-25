@@ -29,6 +29,9 @@ class ApproachController(Node):
     # parameters
     _yaw_precision = math.pi / 90 # +/- 2 degree allowed
     _dist_precision = 0.05
+    _robot_radius = 0.30
+    _robot_lin_vel = 0.40
+    _robot_ang_vel = 0.30
 
     def __init__(self):
         super().__init__('approach_controller')
@@ -78,7 +81,7 @@ class ApproachController(Node):
         
         # sum the actual position of the robot with the calculated position of each point to
         self._des_pos.x = self._des_pos.x + self._position.x
-        self._des_pos.y = self._des_pos.y + self._position.y
+        self._des_pos.y = self._des_pos.y + self._position.y 
 
         desired_yaw = math.atan2(self._des_pos.y - self._position.y, self._des_pos.x - self._position.x)
         err_pos = math.sqrt(pow(self._des_pos.y - self._position.y, 2) + pow(self._des_pos.x - self._position.x, 2))
@@ -112,14 +115,14 @@ class ApproachController(Node):
                 self.get_logger().info("fix yaw")
                 self._state = 'fix yaw'
                 twist_msg = Twist()
-                twist_msg.angular.z = 0.3 if err_yaw > 0 else -0.3
+                twist_msg.angular.z = self._robot_ang_vel if err_yaw > 0 else (self._robot_ang_vel * -1)
                 self._pub_cmd_vel.publish(twist_msg)
             else:
                 # Go to point
                 self.get_logger().info("going to point: %s" % str(goal_handle.request.goal_name))
                 self._state = goal_handle.request.goal_name
                 twist_msg = Twist()
-                twist_msg.linear.x = 0.20
+                twist_msg.linear.x = self._robot_lin_vel
                 twist_msg.angular.z = 0.00
                 self._pub_cmd_vel.publish(twist_msg)
 
