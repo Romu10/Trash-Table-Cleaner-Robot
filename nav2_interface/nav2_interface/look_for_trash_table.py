@@ -263,7 +263,7 @@ def main():
                                                 waypoint_coordinate_y= table_detection.approach_distance_point.y,
                                                 waypoint_name='Approach Point',
                                                 travel_vel= 0.30,
-                                                rot_vel= 0.15)
+                                                rot_vel= 0.0)
                 first_pos = False
                 # wait until the robot reach the approach point
                 while not first_pos:
@@ -275,8 +275,8 @@ def main():
                     controller.send_approach_request(waypoint_coordinate_x=table_detection.pre_approach_distance_point.x,
                                                     waypoint_coordinate_y= table_detection.pre_approach_distance_point.y,
                                                     waypoint_name='Pre Approach Point',
-                                                    travel_vel= 0.25,
-                                                    rot_vel= 0.15)
+                                                    travel_vel= 0.30,
+                                                    rot_vel= 0.0)
                     second_pos = False
                     # wait until robot reach the pre approach point
                     while not second_pos:
@@ -288,8 +288,8 @@ def main():
                         controller.send_approach_request(waypoint_coordinate_x=table_detection.table_middle_point.x,
                                                         waypoint_coordinate_y= (table_detection.table_middle_point.y + 0.15),
                                                         waypoint_name='Middle Point',
-                                                        travel_vel= 0.20,
-                                                        rot_vel= 0.10)
+                                                        travel_vel= 0.30,
+                                                        rot_vel= 0.0)
                         third_pos = False   
                         # wait until robot reach the middle point
                         while not third_pos:

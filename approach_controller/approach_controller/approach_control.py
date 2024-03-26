@@ -88,9 +88,9 @@ class ApproachController(Node):
         self.get_logger().info('Approach Controller Action Service Online...')
 
         # Parámetros del control PID para velocidad angular
-        kp_ang = 0.70  # Ganancia proporcional
+        kp_ang = 1.50  # Ganancia proporcional
         ki_ang = 0.001  # Ganancia integral
-        kd_ang = 0.15  # Ganancia derivativa
+        kd_ang = 0.25  # Ganancia derivativa
         min_output_ang = -0.7  # Valor mínimo de salida
         max_output_ang = 0.7  # Valor máximo de salida
 
@@ -135,6 +135,8 @@ class ApproachController(Node):
         err_pos = math.sqrt(pow(self._des_pos.y - self._position.y, 2) + pow(self._des_pos.x - self._position.x, 2))
         err_yaw = desired_yaw - self._yaw
 
+        rot_vel = 0.0
+
         prev_time = None
         elapsed_time = 0
         start_time = time.time()
@@ -157,7 +159,7 @@ class ApproachController(Node):
                 dt = 0.0
 
             # Print variable status
-            self.get_logger().info("Current Yaw: %s" % str(self._yaw))
+            #self.get_logger().info("Current Yaw: %s" % str(self._yaw))
             #self.get_logger().info("Desired Yaw: %s" % str(desired_yaw))
             self.get_logger().info("Error Yaw: %s" % str(err_yaw))
             #self.get_logger().info("Error Pos: %s" % str(err_pos))
@@ -170,7 +172,6 @@ class ApproachController(Node):
                 success = False
             elif math.fabs(err_yaw) > self._yaw_precision:
                 rot_vel = self.pid_controller_ang.calculate(err_yaw, dt)
-                print('ROT VEL: ', rot_vel)
                 # Fix yaw
                 #self.get_logger().info("fix yaw")
                 self._state = 'fix yaw'
@@ -183,7 +184,7 @@ class ApproachController(Node):
                 self._state = goal_handle.request.goal_name
                 twist_msg = Twist()
                 twist_msg.linear.x = goal_handle.request.travel_vel
-                twist_msg.angular.z = 0.00
+                twist_msg.angular.z = rot_vel
                 self._pub_cmd_vel.publish(twist_msg)
 
             # Use this to send feedback
@@ -229,6 +230,7 @@ class ApproachController(Node):
         desired_yaw_constant = [desired_yaw] * len(self.actual_yaw_list)
 
         # Graficar
+        '''
         plt.plot(self.time_list, desired_yaw_constant, label='Desired Yaw (Constant)')
         plt.plot(self.time_list, self.actual_yaw_list, label='Actual Yaw')
         plt.xlabel('Time (s)')
@@ -236,7 +238,7 @@ class ApproachController(Node):
         plt.title('PID Control Behavior')
         plt.legend()
         plt.show()
-
+        '''
         return result
 
     def calculate_yaw(self, q_x, q_y, q_z, q_w):
