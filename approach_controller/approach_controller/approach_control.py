@@ -10,8 +10,42 @@ from detection_interfaces.action import ApproachTable
 from rclpy.action import ActionServer
 from geometry_msgs.msg import Point, Twist
 import math
+import time
 import numpy as np
 from scipy.spatial.transform import Rotation
+import matplotlib.pyplot as plt
+
+class PIDController:
+    def __init__(self, kp, ki, kd, min_output, max_output):
+        self.kp = kp  # Constante proporcional
+        self.ki = ki  # Constante integral
+        self.kd = kd  # Constante derivativa
+        self.min_output = min_output  # Valor mínimo de salida
+        self.max_output = max_output  # Valor máximo de salida
+        self.prev_error = 0.0  # Error previo
+        self.integral = 0.0  # Término integral
+
+    def calculate(self, error, dt):
+        # Término proporcional
+        proportional = self.kp * error
+
+        # Término integral
+        self.integral += error * dt
+        integral = self.ki * self.integral
+
+        # Término derivativo
+        derivative = self.kd * (error - self.prev_error) / dt
+
+        # Actualizar el error previo
+        self.prev_error = error
+
+        # Calcular la salida del control PID
+        output = proportional + integral + derivative
+
+        # Limitar la salida dentro del rango permitido
+        output = max(min(output, self.max_output), self.min_output)
+
+        return output
 
 class ApproachController(Node):
 
@@ -27,7 +61,7 @@ class ApproachController(Node):
     _des_pos = Point()
 
     # parameters
-    _yaw_precision = math.pi / 180 # +/- 2 degree allowed
+    _yaw_precision = 0.03 # +/- 2 degree allowed
     _dist_precision = 0.05
     _robot_radius = 0.30
 
@@ -52,6 +86,21 @@ class ApproachController(Node):
                                             cancel_callback=self.cancel_callback)
 
         self.get_logger().info('Approach Controller Action Service Online...')
+
+        # Parámetros del control PID para velocidad angular
+        kp_ang = 0.70  # Ganancia proporcional
+        ki_ang = 0.001  # Ganancia integral
+        kd_ang = 0.15  # Ganancia derivativa
+        min_output_ang = -0.7  # Valor mínimo de salida
+        max_output_ang = 0.7  # Valor máximo de salida
+
+        # Crear el controlador PID para velocidad angular
+        self.pid_controller_ang = PIDController(kp_ang, ki_ang, kd_ang, min_output_ang, max_output_ang)
+
+        # Inicializar listas para almacenar los datos
+        self.desired_yaw_list = []
+        self.actual_yaw_list = []
+        self.time_list = []
 
     def goal_callback(self, goal_request):
         """Accept or reject a client request to begin an action."""
@@ -82,9 +131,14 @@ class ApproachController(Node):
         self._des_pos.y = self._des_pos.y + self._position.y 
 
         desired_yaw = math.atan2(self._des_pos.y - self._position.y, self._des_pos.x - self._position.x)
+        self.desired_yaw_list.append(desired_yaw)
         err_pos = math.sqrt(pow(self._des_pos.y - self._position.y, 2) + pow(self._des_pos.x - self._position.x, 2))
         err_yaw = desired_yaw - self._yaw
 
+        prev_time = None
+        elapsed_time = 0
+        start_time = time.time()
+        
         # perform task
         while success:
             # Update variables
@@ -96,24 +150,32 @@ class ApproachController(Node):
             if err_pos < self._dist_precision:
                 break  # Exit the loop if the position error is within the precision threshold
 
+            # Calculate control commands using PID
+            if prev_time is not None:  # Asegúrate de que prev_time no sea None antes de calcular dt
+                dt = elapsed_time - prev_time
+            else:
+                dt = 0.0
+
             # Print variable status
             self.get_logger().info("Current Yaw: %s" % str(self._yaw))
-            self.get_logger().info("Desired Yaw: %s" % str(desired_yaw))
+            #self.get_logger().info("Desired Yaw: %s" % str(desired_yaw))
             self.get_logger().info("Error Yaw: %s" % str(err_yaw))
-            self.get_logger().info("Error Pos: %s" % str(err_pos))
+            #self.get_logger().info("Error Pos: %s" % str(err_pos))
 
             # Logic goes here
             if goal_handle.is_cancel_requested:
                 # Cancelled
                 self.get_logger().info("The goal has been cancelled/preempted")
-                goal_handle.cancelled()
+                goal_handle.abort()
                 success = False
             elif math.fabs(err_yaw) > self._yaw_precision:
+                rot_vel = self.pid_controller_ang.calculate(err_yaw, dt)
+                print('ROT VEL: ', rot_vel)
                 # Fix yaw
-                self.get_logger().info("fix yaw")
+                #self.get_logger().info("fix yaw")
                 self._state = 'fix yaw'
                 twist_msg = Twist()
-                twist_msg.angular.z = goal_handle.request.rot_vel if err_yaw > 0 else (goal_handle.request.rot_vel * -1)
+                twist_msg.angular.z = rot_vel
                 self._pub_cmd_vel.publish(twist_msg)
             else:
                 # Go to point
@@ -128,6 +190,15 @@ class ApproachController(Node):
             feedback_msg = ApproachTable.Feedback()
             feedback_msg.state = goal_handle.request.goal_name
             feedback_msg.current_position = self._position
+
+            # Update elapsed time and previous time
+            prev_time = elapsed_time
+            elapsed_time = time.time() - start_time
+            
+            # update plot variables
+            self.actual_yaw_list.append(self._yaw)
+            self.time_list.append(elapsed_time)
+            
             
         # stop
         twist_msg = Twist()
@@ -149,6 +220,22 @@ class ApproachController(Node):
             result = ApproachTable.Result()
             result.success = False
             self.get_logger().info("goal failed")
+
+        # Graficar los datos al finalizar el control PID
+        # Crear una lista de tiempo con la misma longitud que las listas de yaw
+        time_list = range(len(self.actual_yaw_list))
+
+        # Valor deseado constante para yaw (por ejemplo, 0 grados)
+        desired_yaw_constant = [desired_yaw] * len(self.actual_yaw_list)
+
+        # Graficar
+        plt.plot(self.time_list, desired_yaw_constant, label='Desired Yaw (Constant)')
+        plt.plot(self.time_list, self.actual_yaw_list, label='Actual Yaw')
+        plt.xlabel('Time (s)')
+        plt.ylabel('Yaw')
+        plt.title('PID Control Behavior')
+        plt.legend()
+        plt.show()
 
         return result
 
