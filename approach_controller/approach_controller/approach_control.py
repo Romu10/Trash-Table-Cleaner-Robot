@@ -27,11 +27,9 @@ class ApproachController(Node):
     _des_pos = Point()
 
     # parameters
-    _yaw_precision = math.pi / 90 # +/- 2 degree allowed
+    _yaw_precision = math.pi / 180 # +/- 2 degree allowed
     _dist_precision = 0.05
     _robot_radius = 0.30
-    _robot_lin_vel = 0.40
-    _robot_ang_vel = 0.30
 
     def __init__(self):
         super().__init__('approach_controller')
@@ -40,7 +38,7 @@ class ApproachController(Node):
         #self.laserscan_subscription = self.create_subscription(LaserScan, 'scan', self.laser_callback, 10)
 
         # define a subsription for odom
-        self.odom_subscription = self.create_subscription(Odometry, 'odom', self.odom_callback, 10, 
+        self.odom_subscription = self.create_subscription(Odometry, '/diffbot_base_controller/odom', self.odom_callback, 10, 
                                             callback_group=ReentrantCallbackGroup())
 
         # define a publisher for cmd
@@ -115,14 +113,14 @@ class ApproachController(Node):
                 self.get_logger().info("fix yaw")
                 self._state = 'fix yaw'
                 twist_msg = Twist()
-                twist_msg.angular.z = self._robot_ang_vel if err_yaw > 0 else (self._robot_ang_vel * -1)
+                twist_msg.angular.z = goal_handle.request.rot_vel if err_yaw > 0 else (goal_handle.request.rot_vel * -1)
                 self._pub_cmd_vel.publish(twist_msg)
             else:
                 # Go to point
                 self.get_logger().info("going to point: %s" % str(goal_handle.request.goal_name))
                 self._state = goal_handle.request.goal_name
                 twist_msg = Twist()
-                twist_msg.linear.x = self._robot_lin_vel
+                twist_msg.linear.x = goal_handle.request.travel_vel
                 twist_msg.angular.z = 0.00
                 self._pub_cmd_vel.publish(twist_msg)
 

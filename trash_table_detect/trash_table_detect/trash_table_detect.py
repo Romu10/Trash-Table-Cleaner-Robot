@@ -44,12 +44,14 @@ class TrashTableDetection(Node):
         if self.found_table:
             response.success = True
             response.message = '¡Table Found!'
-            response.table_center_point.x = round((self.table_center_point[0] + 0.05), 2)
-            response.table_center_point.y = round((self.table_center_point[1] + 0.05), 2)
-            response.table_middle_point.x = round((self.leg_middle_point[0] + 0.05), 2)
-            response.table_middle_point.y = round((self.leg_middle_point[1] + 0.05), 2)
-            response.approach_distance_point.x = round((self.approach_point[0] + 0.05), 2)
-            response.approach_distance_point.y = round((self.approach_point[1] + 0.05), 2)
+            response.table_center_point.x = round((self.table_center_point[0] + 0.08), 2)
+            response.table_center_point.y = round((self.table_center_point[1] + 0.0), 2)
+            response.table_middle_point.x = round((self.leg_middle_point[0] + 0.08), 2)
+            response.table_middle_point.y = round((self.leg_middle_point[1] + 0.0), 2)
+            response.approach_distance_point.x = round((self.approach_point[0] + 0.08), 2)
+            response.approach_distance_point.y = round((self.approach_point[1] + 0.0), 2)
+            response.pre_approach_distance_point.x = round((self.pre_approach_point[0] + 0.08), 2)
+            response.pre_approach_distance_point.y = round((self.pre_approach_point[1] + 0.0), 2)
 
         else:
             response.success = False
@@ -148,7 +150,8 @@ class TrashTableDetection(Node):
             # calculate all the points required for define an underneath the table path
             self.leg_middle_point = self.calculate_front_legs_center_point(leg_coordinates=sorted_table_legs_with_distance, display=False)
             self.table_center_point = self.calculate_table_center_point(leg_coordinates=sorted_table_legs_with_distance, display=False)
-            self.approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.3, display=False)
+            self.approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.5, display=False)
+            self.pre_approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.25, display=False)
             self.approach_path = self.create_approach_path(approach_point=self.approach_point, leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, display=False)
 
             # Publish Table Legs Transform
@@ -163,7 +166,7 @@ class TrashTableDetection(Node):
             self.publish_table_transform(frame='approach_distance', x_coordinate=self.approach_point[0], y_coordinate=self.approach_point[1])
 
             # plot graph to visualize data
-            # self.plot_data()
+            #self.plot_data()
 
             # inform table found 
             print('Trash Table Detected')
@@ -268,7 +271,8 @@ class TrashTableDetection(Node):
         axs[1,2].scatter(self.selected_table_square[:,0], self.selected_table_square[:,1], c='green', marker='s')
         axs[1,2].scatter(self.table_center_point[0], self.table_center_point[1], c='red', marker='o', label='Table Center Point')
         axs[1,2].scatter(self.leg_middle_point[0], self.leg_middle_point[1], c='orange', marker='o', label='Front Legs Mid Point')
-        axs[1,2].scatter(self.approach_point[0], self.approach_point[1], c='yellow', marker='o', label='Approach Point')
+        axs[1,2].scatter(self.approach_point[0], self.approach_point[1], c='yellow', marker='o', label='Pre Approach Point')
+        axs[1,2].scatter(self.pre_approach_point[0], self.pre_approach_point[1], c='yellow', marker='o', label='Approach Point')
         axs[1,2].scatter(0, 0, c='purple', marker='^', s=75)
         axs[1,2].plot(self.approach_path[:,0], self.approach_path[:,1], c='blue')
         axs[1,2].legend()
