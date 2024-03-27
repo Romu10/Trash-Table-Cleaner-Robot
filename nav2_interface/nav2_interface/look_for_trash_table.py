@@ -66,20 +66,20 @@ class Nav2TaskManager(Node):
         polygon_msg = Polygon()
 
         point1 = Point32()
-        point1.x = table_length
-        point1.y = -table_length
+        point1.x = table_length/2
+        point1.y = -table_length/2
 
         point2 = Point32()
-        point2.x = table_length
-        point2.y = table_length
+        point2.x = table_length/2
+        point2.y = table_length/2
 
         point3 = Point32()
-        point3.x = -table_length
-        point3.y = table_length
+        point3.x = -table_length/2
+        point3.y = table_length/2
 
         point4 = Point32()
-        point4.x = -table_length
-        point4.y = -table_length
+        point4.x = -table_length/2
+        point4.y = -table_length/2
 
         polygon_msg.points = [point1, point2, point3, point4]
 
@@ -309,7 +309,7 @@ def main():
                     time.sleep(5)
                     manager.lift_table()
                     # change robot footprint, just for square tables
-                    manager.change_footprint(table_length=0.70)
+                    manager.change_footprint(table_length=0.65)
                     break
 
     # Behavior with table lifted
