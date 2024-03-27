@@ -4,7 +4,7 @@ import time
 from copy import deepcopy
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Point32, Polygon
 from std_msgs.msg import String
 from rclpy.duration import Duration
 import rclpy
@@ -51,12 +51,40 @@ class Nav2TaskManager(Node):
         # create a service client
         self.service_client = self.create_client(DetectTableLegs, 'find_table_srv')
 
+        # create a topic publisher for change global and local footprint
+        self.global_footprint = self.create_publisher(Polygon, '/global_costmap/footprint', 10)
+        self.local_footprint = self.create_publisher(Polygon, '/local_costmap/footprint', 10)
+
         # wait until service gets online
         while not self.service_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('Table Detection service not available, waiting again...')
         
         # define the variable to send the request
         self.req = DetectTableLegs.Request()
+    
+    def change_footprint(self, table_length):
+        polygon_msg = Polygon()
+
+        point1 = Point32()
+        point1.x = table_length
+        point1.y = -table_length
+
+        point2 = Point32()
+        point2.x = table_length
+        point2.y = table_length
+
+        point3 = Point32()
+        point3.x = -table_length
+        point3.y = table_length
+
+        point4 = Point32()
+        point4.x = -table_length
+        point4.y = -table_length
+
+        polygon_msg.points = [point1, point2, point3, point4]
+
+        self.global_footprint.publish(polygon_msg)
+        self.local_footprint.publish(polygon_msg)
 
     def lift_table(self):
         table_up = String()
@@ -280,6 +308,8 @@ def main():
                     print('Robot is in table center position.')
                     time.sleep(5)
                     manager.lift_table()
+                    # change robot footprint, just for square tables
+                    manager.change_footprint(table_length=0.70)
                     break
 
     # Behavior with table lifted
