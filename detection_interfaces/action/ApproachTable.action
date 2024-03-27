@@ -1,8 +1,6 @@
 # Request
 geometry_msgs/Point goal_position
 string goal_name
-float32 travel_vel
-float32 rot_vel
 ---
 # Result
 bool success
