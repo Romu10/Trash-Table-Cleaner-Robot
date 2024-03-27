@@ -37,6 +37,8 @@ class TrashTableDetection(Node):
 
         self.found_table = False
 
+        self.get_logger().info('Table Detection Service Online...')
+
     def find_table_srv(self, request, response):
 
         self.get_logger().info('¡Servicio llamado! Leyendo el LaserScan durante 10 segundos...')

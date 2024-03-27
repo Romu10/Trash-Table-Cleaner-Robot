@@ -20,6 +20,9 @@ public:
         // Define scan subscriber
         scan_sub_ = this-> create_subscription<sensor_msgs::msg::LaserScan>("/scan", 10, 
             std::bind(&TrashTableDetect::scan_callback, this, std::placeholders::_1));
+
+        RCLCPP_INFO_ONCE(this->get_logger(), "Laser Filtering Node Online...");
+        
     }
 
 private:

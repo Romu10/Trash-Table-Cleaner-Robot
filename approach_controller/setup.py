@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-             'approach_control = approach_controller.approach_control:main'
+             'approach_control = approach_controller.approach_control:main',
+             'move_table_back = approach_controller.move_table_back:main'
         ],
     },
 )

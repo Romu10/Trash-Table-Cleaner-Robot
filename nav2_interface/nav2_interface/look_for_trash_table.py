@@ -335,6 +335,15 @@ def main():
 
     # Behavior with table lifted
 
+    # Go to position 
+    manager.goToPosition(navigator, request_destination, shipping_destinations[request_destination])
+
+    # Arrival Time 
+    manager.arrivalTime(navigator, request_destination)
+
+    # Get Task Result 
+    result = manager.getTaskResult(navigator, request_destination)
+
                 
     while not navigator.isTaskComplete():
         pass
