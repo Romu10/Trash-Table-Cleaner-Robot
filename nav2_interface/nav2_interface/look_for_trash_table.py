@@ -12,6 +12,7 @@ from detection_interfaces.srv import DetectTableLegs
 from detection_interfaces.action import ApproachTable
 from rclpy.action import ActionClient
 from action_msgs.msg import GoalStatus
+from std_srvs.srv import Trigger
 
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
@@ -49,14 +50,14 @@ class Nav2TaskManager(Node):
         self.drop_table_pub = self.create_publisher(String,'elevator_down', 10)
 
         # create a service client
-        self.service_client = self.create_client(DetectTableLegs, 'find_table_srv')
+        self.detect_table_srv_client = self.create_client(DetectTableLegs, 'find_table_srv')
 
         # create a topic publisher for change global and local footprint
         self.global_footprint = self.create_publisher(Polygon, '/global_costmap/footprint', 10)
         self.local_footprint = self.create_publisher(Polygon, '/local_costmap/footprint', 10)
 
         # wait until service gets online
-        while not self.service_client.wait_for_service(timeout_sec=1.0):
+        while not self.detect_table_srv_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('Table Detection service not available, waiting again...')
         
         # define the variable to send the request
@@ -97,9 +98,9 @@ class Nav2TaskManager(Node):
         self.drop_table_pub.publish(table_down)
 
     def send_detection_request(self):
-        self.future = self.service_client.call_async(self.req)
-        rclpy.spin_until_future_complete(self, self.future)
-        return self.future.result()
+        future = self.detect_table_srv_client.call_async(self.req)
+        rclpy.spin_until_future_complete(self, future)
+        return future.result()
     
     def setRobotInitPosition(self, navigator, location, position, frame = 'map'):
         initial_pose = PoseStamped()
@@ -163,9 +164,24 @@ class ApproachController(Node):
         # define the action service
         self.action_client = ActionClient(self, ApproachTable, 'approach_table_as')
 
+        # define a service
+        self.move_table_back_srv_client = self.create_client(Trigger, 'move_table_back_srv')
+
         # wait until action service gets online
         while not self.action_client.wait_for_server(timeout_sec=1.0):
             print('Approach Controller action not available, waiting again...')
+        
+        # wait until service gets online
+        while not self.move_table_back_srv_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Move Table Back service not available, waiting again...')
+        
+        # define the variable to send the request
+        self.move_table_req = Trigger.Request()
+    
+    def send_table_move_request(self):
+        future = self.move_table_back_srv_client.call_async(self.move_table_req)
+        rclpy.spin_until_future_complete(self, future)
+        return future.result()
 
     def goal_response_callback(self, future):
         goal_handle = future.result()
@@ -310,6 +326,11 @@ def main():
                     manager.lift_table()
                     # change robot footprint, just for square tables
                     manager.change_footprint(table_length=0.65)
+                    table_status = controller.send_table_move_request()
+                    while not table_status.success:
+                        # table_status = controller.send_table_move_request()
+                        rclpy.spin_once(controller)
+                        print('Wait to Operate with Nav2')
                     break
 
     # Behavior with table lifted

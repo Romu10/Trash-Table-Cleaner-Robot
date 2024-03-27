@@ -21,6 +21,8 @@ class MoveTableBack(Node):
 
         # define the service
         self.srv = self.create_service(Trigger, 'move_table_back_srv', self.move_table)
+
+        self.get_logger().info('Move Table Service Online...')
     
     def move_table(self, request, response):
         twist_msg = Twist()
