@@ -61,7 +61,7 @@ class ApproachController(Node):
     _des_pos = Point()
 
     # parameters
-    _yaw_precision = 0.03 # +/- 2 degree allowed
+    _yaw_precision = 0.02 # +/- 2 degree allowed
     _dist_precision = 0.05
     _robot_radius = 0.30
 
@@ -88,14 +88,22 @@ class ApproachController(Node):
         self.get_logger().info('Approach Controller Action Service Online...')
 
         # Parámetros del control PID para velocidad angular
-        kp_ang = 1.50  # Ganancia proporcional
-        ki_ang = 0.001  # Ganancia integral
-        kd_ang = 0.25  # Ganancia derivativa
-        min_output_ang = -0.7  # Valor mínimo de salida
-        max_output_ang = 0.7  # Valor máximo de salida
+        kp_ang = 1.60  # Ganancia proporcional
+        ki_ang = 0.007  # Ganancia integral
+        kd_ang = 1.20  # Ganancia derivativa
+        min_output_ang = -0.6  # Valor mínimo de salida
+        max_output_ang = 0.6  # Valor máximo de salida
+
+        # Parámetros del control PID para velocidad lineal
+        kp_lin = 0.85  # Ganancia proporcional
+        ki_lin = 0.005  # Ganancia integral
+        kd_lin = 0.1  # Ganancia derivativa
+        min_output_lin = 0.0  # Valor mínimo de salida
+        max_output_lin = 0.10  # Valor máximo de salida
 
         # Crear el controlador PID para velocidad angular
         self.pid_controller_ang = PIDController(kp_ang, ki_ang, kd_ang, min_output_ang, max_output_ang)
+        self.pid_controller_lin = PIDController(kp_lin, ki_lin, kd_lin, min_output_lin, max_output_lin)
 
         # Inicializar listas para almacenar los datos
         self.desired_yaw_list = []
@@ -156,7 +164,7 @@ class ApproachController(Node):
             if prev_time is not None:  # Asegúrate de que prev_time no sea None antes de calcular dt
                 dt = elapsed_time - prev_time
             else:
-                dt = 0.0
+                dt = 0.00001
 
             # Print variable status
             #self.get_logger().info("Current Yaw: %s" % str(self._yaw))
@@ -170,20 +178,22 @@ class ApproachController(Node):
                 self.get_logger().info("The goal has been cancelled/preempted")
                 goal_handle.abort()
                 success = False
-            elif math.fabs(err_yaw) > self._yaw_precision:
-                rot_vel = self.pid_controller_ang.calculate(err_yaw, dt)
+            #elif math.fabs(err_yaw) > self._yaw_precision:
+            #    rot_vel = self.pid_controller_ang.calculate(err_yaw, dt)
                 # Fix yaw
                 #self.get_logger().info("fix yaw")
-                self._state = 'fix yaw'
-                twist_msg = Twist()
-                twist_msg.angular.z = rot_vel
-                self._pub_cmd_vel.publish(twist_msg)
+            #    self._state = 'fix yaw'
+            #    twist_msg = Twist()
+            #    twist_msg.angular.z = rot_vel
+            #    self._pub_cmd_vel.publish(twist_msg)
             else:
+                rot_vel = self.pid_controller_ang.calculate(err_yaw, dt)
+                lin_vel = self.pid_controller_lin.calculate(err_pos, dt)
                 # Go to point
                 self.get_logger().info("going to point: %s" % str(goal_handle.request.goal_name))
                 self._state = goal_handle.request.goal_name
                 twist_msg = Twist()
-                twist_msg.linear.x = goal_handle.request.travel_vel
+                twist_msg.linear.x = lin_vel
                 twist_msg.angular.z = rot_vel
                 self._pub_cmd_vel.publish(twist_msg)
 
