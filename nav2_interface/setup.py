@@ -1,6 +1,10 @@
+import os
+from glob import glob
 from setuptools import setup
 
 package_name = 'nav2_interface'
+launch_files = (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py'))
+
 
 setup(
     name=package_name,
@@ -10,6 +14,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        launch_files
     ],
     install_requires=['setuptools'],
     zip_safe=True,
