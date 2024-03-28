@@ -22,7 +22,7 @@ table_trash_positions = {                                                   #
     "position_1": [1.10607,    -0.164404,   0.759042,   0.755167],           #
     "position_2": [-0.0491602, -0.689815,  -0.999793,   0.0203558],         #
     "position_3": [-1.46219,   -2.08501,   -0.705164,   0.709044],          #
-    "position_4": [3.92892,    -1.435,     -0.100632,   0.994924],          #
+    "position_4": [3.72892,    -1.435,     -0.100632,   0.994924],          #
     "position_5": [4.92647,     0.19721,    0.691586,   0.722294],          #
     "position_6": [1.1534,     -2.76343,   -0.694667,   0.719332]}          #
 #############################################################################                                                                         
@@ -259,7 +259,7 @@ def main():
     request_table_location = 'position_'
 
     # Iterate over a sequence from 1 to 6
-    i = 1
+    i = 4
     while i < 6:
         # Define the goal position 
         request_table_location = 'position_' + str(i)
@@ -285,6 +285,15 @@ def main():
 
             if table_detection.success:
                 print('Table detected\n')
+                print('Waypoints are:\n')
+                print('Approach Distance Point x: ', table_detection.approach_distance_point.x)
+                print('Approach Distance Point y: ', table_detection.approach_distance_point.y)
+                print('Pre Approach Distance Point x: ', table_detection.pre_approach_distance_point.x)
+                print('Pre Approach Distance Point x: ', table_detection.pre_approach_distance_point.y)
+                print('Table Middle Point x: ', table_detection.table_middle_point.x)
+                print('Table Middle Point y: ', table_detection.table_middle_point.y)
+                print('Table Center Point x: ', table_detection.table_center_point.x)
+                print('Table Center Point y: ', table_detection.table_center_point.y)
 
                 # if table detected, go to the approach point
                 controller.send_approach_request(waypoint_coordinate_x=table_detection.approach_distance_point.x,
