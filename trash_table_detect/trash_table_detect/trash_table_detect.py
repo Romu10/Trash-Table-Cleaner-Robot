@@ -41,19 +41,19 @@ class TrashTableDetection(Node):
 
     def find_table_srv(self, request, response):
 
-        self.get_logger().info('¡Servicio llamado! Leyendo el LaserScan durante 10 segundos...')
+        self.get_logger().info('Verifying table precenses...')
         
         if self.found_table:
             response.success = True
             response.message = '¡Table Found!'
-            response.table_center_point.x = round((self.table_center_point[0] + 0.08), 2)
-            response.table_center_point.y = round((self.table_center_point[1] + 0.0), 2)
-            response.table_middle_point.x = round((self.leg_middle_point[0] + 0.08), 2)
-            response.table_middle_point.y = round((self.leg_middle_point[1] + 0.0), 2)
-            response.approach_distance_point.x = round((self.approach_point[0] + 0.08), 2)
-            response.approach_distance_point.y = round((self.approach_point[1] + 0.0), 2)
-            response.pre_approach_distance_point.x = round((self.pre_approach_point[0] + 0.08), 2)
-            response.pre_approach_distance_point.y = round((self.pre_approach_point[1] + 0.0), 2)
+            response.table_center_point.x = round(self.table_center_point[0], 2)
+            response.table_center_point.y = round(self.table_center_point[1], 2)
+            response.table_middle_point.x = round(self.leg_middle_point[0], 2)
+            response.table_middle_point.y = round(self.leg_middle_point[1], 2)
+            response.approach_distance_point.x = round(self.approach_point[0], 2)
+            response.approach_distance_point.y = round(self.approach_point[1], 2)
+            response.pre_approach_distance_point.x = round(self.pre_approach_point[0], 2)
+            response.pre_approach_distance_point.y = round(self.pre_approach_point[1], 2)
 
         else:
             response.success = False
@@ -152,8 +152,8 @@ class TrashTableDetection(Node):
             # calculate all the points required for define an underneath the table path
             self.leg_middle_point = self.calculate_front_legs_center_point(leg_coordinates=sorted_table_legs_with_distance, display=False)
             self.table_center_point = self.calculate_table_center_point(leg_coordinates=sorted_table_legs_with_distance, display=False)
-            self.approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.5, display=False)
-            self.pre_approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.25, display=False)
+            self.approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.30, display=False)
+            self.pre_approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.15, display=False)
             self.approach_path = self.create_approach_path(approach_point=self.approach_point, leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, display=False)
 
             # Publish Table Legs Transform

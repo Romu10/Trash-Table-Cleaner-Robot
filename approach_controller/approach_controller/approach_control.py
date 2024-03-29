@@ -88,7 +88,7 @@ class ApproachController(Node):
         self.get_logger().info('Approach Controller Action Service Online...')
 
         # Angular Vel PID Control params
-        kp_ang = 1.60  # proportional gain
+        kp_ang = 1.80  # proportional gain
         ki_ang = 0.007  # integral gain
         kd_ang = 1.20  # derivative gain 
         min_output_ang = -0.6  # min output value for vel 
@@ -99,7 +99,7 @@ class ApproachController(Node):
         ki_lin = 0.005  # integral gain
         kd_lin = 0.1  # derivative gain 
         min_output_lin = 0.0  # min output value for vel 
-        max_output_lin = 0.5  # max output value for vel
+        max_output_lin = 0.20  # max output value for vel
 
         # Crear el controlador PID para velocidad angular
         self.pid_controller_ang = PIDController(kp_ang, ki_ang, kd_ang, min_output_ang, max_output_ang)
@@ -125,7 +125,7 @@ class ApproachController(Node):
         self._action_server.destroy()
         super().destroy_node()
         
-    def  execute_callback(self, goal_handle):
+    def execute_callback(self, goal_handle):
         self.get_logger().info('Executing goal...')
 
         # helper variables
@@ -136,30 +136,21 @@ class ApproachController(Node):
         self.get_logger().info("Point X position: %f" % self._des_pos.x)
         self.get_logger().info("Point Y position: %f" % self._des_pos.y)
 
-        # Guardar temporalmente las coordenadas del punto de destino
-        des_pos_x = self._des_pos.x
-        des_pos_y = self._des_pos.y
-
-        # Actualizar las coordenadas del punto de destino con las coordenadas relativas al robot
-        self._des_pos.x = self._position.x + des_pos_y
-        self._des_pos.y = self._position.y + des_pos_x 
-
         self.get_logger().info("Current X position: %f" % self._position.x)
         self.get_logger().info("Current Y position: %f" % self._position.y)
         self.get_logger().info("Waypoint X position: %f" % self._des_pos.x)
         self.get_logger().info("Waypoint Y position: %f" % self._des_pos.y)
 
-        desired_yaw = math.atan2(self._des_pos.x - self._position.x, self._des_pos.y - self._position.y)
+        desired_yaw = math.atan2(self._des_pos.y - self._position.y, self._des_pos.x - self._position.x)
+        self.desired_yaw_list.append(desired_yaw)
 
         self.get_logger().info("Desired Yaw: %f" % desired_yaw)
         self.get_logger().info("Current Yaw: %f" % self._yaw)
 
-        self.desired_yaw_list.append(desired_yaw)
         err_pos = math.sqrt(pow(self._des_pos.y - self._position.y, 2) + pow(self._des_pos.x - self._position.x, 2))
         err_yaw = desired_yaw - self._yaw
         self.get_logger().info("Error Pos: %f" % err_pos)
         self.get_logger().info("Error Yaw: %f" % err_yaw)
-        time.sleep(10)
 
         rot_vel = 0.0
 
@@ -170,7 +161,7 @@ class ApproachController(Node):
         # perform task
         while success:
             # Update variables
-            desired_yaw = math.atan2(self._des_pos.x - self._position.x, self._des_pos.y - self._position.y)
+            desired_yaw = math.atan2(self._des_pos.y - self._position.y, self._des_pos.x - self._position.x)
             
             err_yaw = desired_yaw - self._yaw
             err_pos = math.sqrt(pow(self._des_pos.y - self._position.y, 2) + pow(self._des_pos.x - self._position.x, 2))
@@ -209,8 +200,8 @@ class ApproachController(Node):
                 self._pub_cmd_vel.publish(twist_msg)
 
             else:
-                rot_vel = self.pid_controller_ang.calculate(err_yaw, dt)
                 lin_vel = self.pid_controller_lin.calculate(err_pos, dt)
+                rot_vel = self.pid_controller_ang.calculate(err_yaw, dt)
                 # Go to point
                 self.get_logger().info("going to point: %s" % str(goal_handle.request.goal_name))
                 self._state = goal_handle.request.goal_name
@@ -231,7 +222,6 @@ class ApproachController(Node):
             # update plot variables
             #self.actual_yaw_list.append(self._yaw)
             #self.time_list.append(elapsed_time)
-            
             
         # stop
         twist_msg = Twist()

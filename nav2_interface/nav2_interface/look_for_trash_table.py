@@ -1,11 +1,13 @@
 #! /usr/bin/env python3
 
 import time
+import math
 from copy import deepcopy
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import PoseStamped, Point32, Polygon
-from std_msgs.msg import String
+from geometry_msgs.msg import PoseStamped, Point32, Polygon, Point
+from nav_msgs.msg import Odometry
+from std_msgs.msg import String, Empty
 from rclpy.duration import Duration
 import rclpy
 from detection_interfaces.srv import DetectTableLegs
@@ -239,12 +241,60 @@ class ApproachController(Node):
     def get_action_result(self):
         return self.action_success
 
+class RobotController(Node):
+
+    def __init__(self):
+        super().__init__('robot_controller')
+
+        # define a subsription for odom
+        self.odom_subscription = self.create_subscription(Odometry, '/diffbot_base_controller/odom', self.odom_callback, 10)
+
+        # run flag
+        self.read = False
+
+    def get_position(self):
+        position = None
+        read = None
+        if self.read:
+            position = self._position
+            read = True
+        return position, read
+
+    def calculate_yaw(self, q_x, q_y, q_z, q_w):
+        # Calcular ángulo de yaw
+        yaw = math.atan2(2 * (q_w * q_z + q_x * q_y), 1 - 2 * (q_y**2 + q_z**2))
+        
+        # Ajustar el ángulo para que esté en el rango [-pi, pi]
+        if yaw > math.pi:
+            yaw -= 2 * math.pi
+        elif yaw < -math.pi:
+            yaw += 2 * math.pi
+        
+        return yaw
+
+    def odom_callback(self, msg):
+        
+        # get robots positions
+        self._position = msg.pose.pose.position
+        
+        # get robots orientation in terms of quaternions
+        q_x = msg.pose.pose.orientation.x
+        q_y = msg.pose.pose.orientation.y
+        q_z = msg.pose.pose.orientation.z
+        q_w = msg.pose.pose.orientation.w
+
+        # Calculate robot yaw in degree
+        self.yaw = round(self.calculate_yaw(q_x=q_x, q_y=q_y, q_z=q_z, q_w=q_w), 3)
+
+        self.read = True
+
 def main():
 
     rclpy.init()
     navigator = BasicNavigator()
     manager = Nav2TaskManager()
     controller = ApproachController()
+    robot = RobotController()
 
     # Set your demo's initial pose
     manager.setRobotInitPosition(navigator, 'Start Position', robot_init_position['start_position'])
@@ -257,6 +307,15 @@ def main():
 
     # Define the initial variable
     request_table_location = 'position_'
+
+    robot_position = Point()
+    odom_read = False
+
+    # Define some variables
+    approach_point = Point()
+    pre_approach_point = Point()
+    middle_point = Point()
+    center_point = Point()
 
     # Iterate over a sequence from 1 to 6
     i = 4
@@ -275,29 +334,47 @@ def main():
 
         # Do something if result depending on result status
         if result: 
+            time.sleep(10)
             table_detection = manager.send_detection_request()
             if table_detection.success:
-                print('Table Found!\n')
+                print('Table Found!')
             else:
-                print('Looking for Table in this Place\n')
+                print('Looking for Table in this Place')
                 time.sleep(20)
                 table_detection = manager.send_detection_request()
 
             if table_detection.success:
                 print('Table detected\n')
-                print('Waypoints are:\n')
-                print('Approach Distance Point x: ', table_detection.approach_distance_point.x)
-                print('Approach Distance Point y: ', table_detection.approach_distance_point.y)
-                print('Pre Approach Distance Point x: ', table_detection.pre_approach_distance_point.x)
-                print('Pre Approach Distance Point x: ', table_detection.pre_approach_distance_point.y)
-                print('Table Middle Point x: ', table_detection.table_middle_point.x)
-                print('Table Middle Point y: ', table_detection.table_middle_point.y)
-                print('Table Center Point x: ', table_detection.table_center_point.x)
-                print('Table Center Point y: ', table_detection.table_center_point.y)
+
+                # first get current position
+                while not odom_read:
+                    robot_position, odom_read = robot.get_position()
+                    rclpy.spin_once(robot)
+
+                # calculate each point position from current position
+                approach_point.x = robot_position.x + table_detection.approach_distance_point.y
+                approach_point.y = robot_position.y + table_detection.approach_distance_point.x
+                pre_approach_point.x = robot_position.x + table_detection.pre_approach_distance_point.y
+                pre_approach_point.y = robot_position.y + table_detection.pre_approach_distance_point.x
+                middle_point.x = robot_position.x + table_detection.table_middle_point.y
+                middle_point.y = robot_position.y + table_detection.table_middle_point.x
+                center_point.x = robot_position.x + table_detection.table_center_point.y + 0.30
+                center_point.y = robot_position.y + table_detection.table_center_point.x
+
+                # print point generated
+                print('Waypoints are:')
+                print('Approach Distance Point x: ', approach_point.x)
+                print('Approach Distance Point y: ', approach_point.y)
+                print('Pre Approach Distance Point x: ', pre_approach_point.x)
+                print('Pre Approach Distance Point x: ', pre_approach_point.y)
+                print('Table Middle Point x: ', middle_point.x)
+                print('Table Middle Point y: ', middle_point.y)
+                print('Table Center Point x: ', center_point.x)
+                print('Table Center Point y: ', center_point.y)
 
                 # if table detected, go to the approach point
-                controller.send_approach_request(waypoint_coordinate_x=table_detection.approach_distance_point.x,
-                                                waypoint_coordinate_y= table_detection.approach_distance_point.y,
+                controller.send_approach_request(waypoint_coordinate_x=approach_point.x,
+                                                waypoint_coordinate_y= approach_point.y,
                                                 waypoint_name='Approach Point')
                 first_pos = False
                 # wait until the robot reach the approach point
@@ -307,8 +384,8 @@ def main():
                 
                 # if robot reached the approach point, then go to the pre approach point
                 if first_pos:
-                    controller.send_approach_request(waypoint_coordinate_x=table_detection.pre_approach_distance_point.x,
-                                                    waypoint_coordinate_y= table_detection.pre_approach_distance_point.y,
+                    controller.send_approach_request(waypoint_coordinate_x=pre_approach_point.x,
+                                                    waypoint_coordinate_y= pre_approach_point.y,
                                                     waypoint_name='Pre Approach Point')
                     second_pos = False
                     # wait until robot reach the pre approach point
@@ -318,18 +395,28 @@ def main():
                     
                     # if robot reached the pre approach point, then go to the middle point 
                     if second_pos:
-                        controller.send_approach_request(waypoint_coordinate_x=table_detection.table_middle_point.x,
-                                                        waypoint_coordinate_y= (table_detection.table_middle_point.y + 0.15),
+                        controller.send_approach_request(waypoint_coordinate_x=middle_point.x,
+                                                        waypoint_coordinate_y= middle_point.y,
                                                         waypoint_name='Middle Point')
                         third_pos = False   
                         # wait until robot reach the middle point
                         while not third_pos:
                             third_pos = controller.get_action_result()
                             rclpy.spin_once(controller)
+
+                        if third_pos:
+                            controller.send_approach_request(waypoint_coordinate_x=center_point.x,
+                                                            waypoint_coordinate_y= center_point.y,
+                                                            waypoint_name='Center Point')
+                            fourth_pos = False
+                            # wait until robot reach the center point
+                            while not fourth_pos:
+                                fourth_pos = controller.get_action_result()
+                                rclpy.spin_once(controller)
+
                         
-                
                 # if all waypoints where reached, then lift the table. 
-                if first_pos and second_pos and third_pos:
+                if first_pos and second_pos and third_pos and fourth_pos:
                     print('Robot is in table center position.')
                     time.sleep(5)
                     manager.lift_table()
@@ -337,9 +424,7 @@ def main():
                     manager.change_footprint(table_length=0.65)
                     table_status = controller.send_table_move_request()
                     while not table_status.success:
-                        # table_status = controller.send_table_move_request()
                         rclpy.spin_once(controller)
-                        print('Wait to Operate with Nav2')
                     break
 
     # Behavior with table lifted
