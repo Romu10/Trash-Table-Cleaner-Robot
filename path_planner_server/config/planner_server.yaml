@@ -43,7 +43,7 @@ global_costmap:
           raytrace_max_range: 3.0
           raytrace_min_range: 0.0
           obstacle_max_range: 2.5
-          obstacle_min_range: 0.0
+          obstacle_min_range: 1.0
       keepout_filter:
         plugin: "nav2_costmap_2d::KeepoutFilter"
         enabled: True

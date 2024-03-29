@@ -13,6 +13,8 @@ from geometry_msgs.msg import TransformStamped
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from detection_interfaces.srv import DetectTableLegs
+from rclpy.executors import MultiThreadedExecutor
+from rclpy.callback_groups import ReentrantCallbackGroup
 
 class TrashTableDetection(Node):
 
@@ -27,7 +29,8 @@ class TrashTableDetection(Node):
         self.k = 15
 
         # define a subscription for laser scan
-        self.laserscan_subscription = self.create_subscription(LaserScan, 'table_scan_filtered', self.laser_callback, 10)
+        self.laserscan_subscription = self.create_subscription(LaserScan, 'table_scan_filtered', self.laser_callback, 10,
+                                                                callback_group=ReentrantCallbackGroup())
 
         # define the service
         self.srv = self.create_service(DetectTableLegs, 'find_table_srv', self.find_table_srv)
@@ -35,13 +38,14 @@ class TrashTableDetection(Node):
         # define the tf broadcaster to publish tf
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
-        self.found_table = False
-
         self.get_logger().info('Table Detection Service Online...')
 
     def find_table_srv(self, request, response):
 
-        self.get_logger().info('Verifying table precenses...')
+        self.found_table = False
+
+        while not self.found_table:
+            self.get_logger().info('Verifying table precenses...')
         
         if self.found_table:
             response.success = True
@@ -152,8 +156,8 @@ class TrashTableDetection(Node):
             # calculate all the points required for define an underneath the table path
             self.leg_middle_point = self.calculate_front_legs_center_point(leg_coordinates=sorted_table_legs_with_distance, display=False)
             self.table_center_point = self.calculate_table_center_point(leg_coordinates=sorted_table_legs_with_distance, display=False)
-            self.approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.30, display=False)
-            self.pre_approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.15, display=False)
+            self.approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.50, display=False)
+            self.pre_approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.25, display=False)
             self.approach_path = self.create_approach_path(approach_point=self.approach_point, leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, display=False)
 
             # Publish Table Legs Transform
@@ -518,10 +522,14 @@ def main(args=None):
 
     trash_table_detection = TrashTableDetection()
 
-    rclpy.spin(trash_table_detection)
+    # Use a MultiThreadedExecutor to enable processing goals concurrently
+    executor = MultiThreadedExecutor()
 
-    trash_table_detection.destroy_node()
+    rclpy.spin(trash_table_detection, executor=executor)
+
+    trash_table_detection.destroy()
     rclpy.shutdown()
+
 
 
 if __name__ == '__main__':
