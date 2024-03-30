@@ -13,7 +13,7 @@ import math
 import time
 import numpy as np
 from scipy.spatial.transform import Rotation
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 class PIDController:
     def __init__(self, kp, ki, kd, min_output, max_output):
@@ -61,9 +61,8 @@ class ApproachController(Node):
     _des_pos = Point()
 
     # parameters
-    _yaw_precision = 0.04 # +/- 2 degree allowed
+    _yaw_precision = 0.03 # +/- 2 degree allowed
     _dist_precision = 0.05
-    _robot_radius = 0.30
 
     def __init__(self):
         super().__init__('approach_controller')
@@ -91,15 +90,15 @@ class ApproachController(Node):
         kp_ang = 2.0  # proportional gain
         ki_ang = 0.007  # integral gain
         kd_ang = 1.20  # derivative gain 
-        min_output_ang = -0.5  # min output value for vel 
-        max_output_ang = 0.5  # max output value for vel
+        min_output_ang = -0.25  # min output value for vel 
+        max_output_ang = 0.25  # max output value for vel
 
         # Lineal Vel Control PID Control params
         kp_lin = 1.0  # proportional gain
         ki_lin = 0.005  # integral gain
         kd_lin = 0.1  # derivative gain 
         min_output_lin = 0.0  # min output value for vel 
-        max_output_lin = 0.12  # max output value for vel
+        max_output_lin = 0.1  # max output value for vel
 
         # Crear el controlador PID para velocidad angular
         self.pid_controller_ang = PIDController(kp_ang, ki_ang, kd_ang, min_output_ang, max_output_ang)
@@ -140,6 +139,7 @@ class ApproachController(Node):
         self.get_logger().info("Current Y position: %f" % self._position.y)
 
         desired_yaw = goal_handle.request.desired_yaw
+        calculate_yaw = goal_handle.request.calculate_yaw
         #desired_yaw = math.atan2(self._des_pos.y - self._position.y, self._des_pos.x - self._position.x)
         #self.desired_yaw_list.append(desired_yaw)
 
@@ -147,24 +147,31 @@ class ApproachController(Node):
         # robot -yaw = right - calculated +yaw = right 
 
         # this give me the desired rad in robot coordinates
-        needed_yaw = self._yaw - desired_yaw
-        err_yaw = needed_yaw - self._yaw 
-
-        self.get_logger().info("Desired Yaw: %f" % desired_yaw)
-        self.get_logger().info("Current Yaw: %f" % self._yaw)
-        #self.get_logger().info("Needed Yaw: %f" % needed_yaw)
+        if calculate_yaw:
+            needed_yaw = self._yaw - desired_yaw
+            err_yaw_cal = needed_yaw
+            self.get_logger().info("Request Calculate Yaw")
+        else:
+            needed_yaw = self._yaw - desired_yaw
+            err_yaw_cal = needed_yaw
+            self.get_logger().info("Do NOT Request Calculate Yaw")
 
         err_pos = math.sqrt(pow(self._des_pos.y - self._position.y, 2) + pow(self._des_pos.x - self._position.x, 2))
 
+        self.get_logger().info("=============================================")
+        self.get_logger().info("Calculated Yaw: %f" % desired_yaw)
+        self.get_logger().info("Current Yaw: %f" % self._yaw)
+        self.get_logger().info("Needed Yaw: %f" % needed_yaw)
+        self.get_logger().info("Error Yaw Cal: %f" % err_yaw_cal)
         self.get_logger().info("Error Pos: %f" % err_pos)
-        self.get_logger().info("Error Yaw: %f" % err_yaw)
+        self.get_logger().info("=============================================")
 
         rot_vel = 0.0
-
         prev_time = None
         elapsed_time = 0
         start_time = time.time()
         time.sleep(10)
+
         # perform task
         while success:
 
@@ -173,7 +180,10 @@ class ApproachController(Node):
             # Update variables
             #desired_yaw = math.atan2(self._des_pos.y - self._position.y, self._des_pos.x - self._position.x)
             #needed_yaw = self._yaw - desired_yaw
-            err_yaw = needed_yaw - self._yaw 
+            if calculate_yaw:
+                err_yaw = desired_yaw - self._yaw
+            else:
+                err_yaw = err_yaw_cal - self._yaw 
             
             # calculate the distances between points
             #err_pos = math.sqrt(pow(self._des_pos.y - self._position.y, 2) + pow(self._des_pos.x - self._position.x, 2))
@@ -190,16 +200,14 @@ class ApproachController(Node):
                 dt = 0.00001
 
             # Print variable status
-            #self.get_logger().info("Current Yaw: %s" % str(self._yaw))
+            self.get_logger().info("Current Yaw: %s" % str(self._yaw))
             #self.get_logger().info("Desired Yaw: %s" % str(desired_yaw))
             #self.get_logger().info("Needed Yaw: %f" % needed_yaw)
             self.get_logger().info("Error Yaw: %s" % str(err_yaw))
             self.get_logger().info("Error Pos: %s" % str(err_pos))
-            self.get_logger().info("Current X position: %f" % self._position.x)
-            self.get_logger().info("Current Y position: %f" % self._position.y)
-            self.get_logger().info("Waypoint X position: %f" % self._des_pos.x)
-            self.get_logger().info("Waypoint Y position: %f" % self._des_pos.y)
-
+            #self.get_logger().info("Current X position: %f" % self._position.x)
+            #self.get_logger().info("Current Y position: %f" % self._position.y)
+     
             # Logic goes here
             if goal_handle.is_cancel_requested:
                 # Cancelled
@@ -207,24 +215,27 @@ class ApproachController(Node):
                 goal_handle.abort()
                 success = False
             elif math.fabs(err_yaw) > self._yaw_precision:
-                rot_vel = self.pid_controller_ang.calculate(math.fabs(err_yaw), dt)
+                rot_vel = self.pid_controller_ang.calculate(err_yaw, dt)
+                #rot_vel = self.pid_controller_ang.calculate(math.fabs(err_yaw), dt)
                 # fix yaw
                 #self.get_logger().info("fix yaw")
                 #self._state = 'fix yaw'
                 twist_msg = Twist()
-                #twist_msg.angular.z = rot_vel
-                twist_msg.angular.z = rot_vel if err_yaw > 0 else -rot_vel
+                twist_msg.angular.z = rot_vel
+                #twist_msg.angular.z = rot_vel if err_yaw > 0 else -rot_vel
                 self._pub_cmd_vel.publish(twist_msg)
 
             else:
                 lin_vel = self.pid_controller_lin.calculate(err_pos, dt)
-                rot_vel = self.pid_controller_ang.calculate(math.fabs(err_yaw), dt)
+                #rot_vel = self.pid_controller_ang.calculate(math.fabs(err_yaw), dt)
+                rot_vel = self.pid_controller_ang.calculate(err_yaw, dt)
                 # Go to point
                 #self.get_logger().info("going to point: %s" % str(goal_handle.request.goal_name))
                 self._state = goal_handle.request.goal_name
                 twist_msg = Twist()
                 twist_msg.linear.x = lin_vel
-                twist_msg.angular.z = rot_vel if err_yaw > 0 else -rot_vel
+                #twist_msg.angular.z = rot_vel if err_yaw > 0 else -rot_vel
+                twist_msg.angular.z = rot_vel
                 self._pub_cmd_vel.publish(twist_msg)
 
             # Use this to send feedback
@@ -303,7 +314,7 @@ class ApproachController(Node):
         q_w = msg.pose.pose.orientation.w
 
         # Calculate robot yaw in degree
-        self._yaw = round(self.calculate_yaw(q_x=q_x, q_y=q_y, q_z=q_z, q_w=q_w), 3)
+        self._yaw = self.calculate_yaw(q_x=q_x, q_y=q_y, q_z=q_z, q_w=q_w)
 
         #self.get_logger().info("Yaw: %f" % self._yaw)
 

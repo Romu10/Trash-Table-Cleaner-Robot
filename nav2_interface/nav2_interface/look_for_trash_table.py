@@ -24,7 +24,7 @@ table_trash_positions = {                                                   #
     "position_1": [1.10607,    -0.164404,   0.759042,   0.755167],           #
     "position_2": [-0.0491602, -0.689815,  -0.999793,   0.0203558],         #
     "position_3": [-1.46219,   -2.08501,   -0.705164,   0.709044],          #
-    "position_4": [3.72892,    -1.30005,     -0.100632,   0.994924],          #
+    "position_4": [3.72892,    -1.550005,     -0.100632,   0.994924],          #
     "position_5": [4.92647,     0.19721,    0.691586,   0.722294],          #
     "position_6": [1.1534,     -2.76343,   -0.694667,   0.719332]}          #
 #############################################################################                                                                         
@@ -210,7 +210,7 @@ class ApproachController(Node):
         else:
             self.get_logger().info('Goal failed with status: {0}'.format(status))
 
-    def send_approach_request(self, waypoint_coordinate_x, waypoint_coordinate_y, waypoint_name, desired_yaw):
+    def send_approach_request(self, waypoint_coordinate_x, waypoint_coordinate_y, waypoint_name, desired_yaw, calculate_yaw):
         
         # action flag
         self.action_success = False
@@ -231,6 +231,9 @@ class ApproachController(Node):
 
         # pass waypoint yaw
         waypoint_goal.desired_yaw = desired_yaw
+
+        # pass calculate yaw indication
+        waypoint_goal.calculate_yaw = calculate_yaw
         
         # inform that the goal was sent
         self.get_logger().info('Sending goal request...')
@@ -381,39 +384,17 @@ def main():
             # calculate yaw between current position and approach_distance point
             desired_yaw_1 = math.atan2(approach_point.y - robot_position.y, approach_point.x - robot_position.x)
 
-            #calculate position for pre_approach_distance point 
-            pre_approach_point.x = robot_position.x + table_detection.pre_approach_distance_point.y
-            pre_approach_point.y = robot_position.y + table_detection.pre_approach_distance_point.x
-
-            # calculate yaw between approach_point and pre_approach_distance point
-            desired_yaw_2 = math.atan2(pre_approach_point.y - approach_point.y, pre_approach_point.x - approach_point.x)
-
-            # calculate position for table middle point
-            middle_point.x = robot_position.x + table_detection.table_middle_point.y
-            middle_point.y = robot_position.y + table_detection.table_middle_point.x
-
-            # calculate yaw between  middle point and pre approach distance point
-            desired_yaw_3 = math.atan2(middle_point.y - pre_approach_point.y, middle_point.x - pre_approach_point.x)
-
             # calculate position for table center point
             center_point.x = robot_position.x + table_detection.table_center_point.y 
-            center_point.y = robot_position.y + table_detection.table_center_point.x
-
-            # calculate yaw between  middle point and pre approach distance point
-            desired_yaw_4 = math.atan2(center_point.y - middle_point.y, center_point.x - middle_point.x)
+            center_point.y = robot_position.y + table_detection.table_center_point.x + 0.25
 
             # calulate yaw betwwen approach point and center point 
-            desired_yaw_5 = math.atan2(center_point.y - approach_point.y, center_point.x - approach_point.x)
-
+            desired_yaw_2 = math.atan2(center_point.y - approach_point.y, center_point.x - approach_point.x)
 
             # print point generated
             print('Waypoints are:')
             print('Approach Distance Point x: ', approach_point.x)
             print('Approach Distance Point y: ', approach_point.y)
-            print('Pre Approach Distance Point x: ', pre_approach_point.x)
-            print('Pre Approach Distance Point x: ', pre_approach_point.y)
-            print('Table Middle Point x: ', middle_point.x)
-            print('Table Middle Point y: ', middle_point.y)
             print('Table Center Point x: ', center_point.x)
             print('Table Center Point y: ', center_point.y)
 
@@ -421,7 +402,8 @@ def main():
             controller.send_approach_request(waypoint_coordinate_x=approach_point.x,
                                             waypoint_coordinate_y=approach_point.y,
                                             waypoint_name='Approach Point',
-                                            desired_yaw=desired_yaw_1)
+                                            desired_yaw=desired_yaw_1,
+                                            calculate_yaw=False)
             first_pos = False
             # wait until the robot reach the approach point
             while not first_pos:
@@ -434,40 +416,18 @@ def main():
                 robot_position, odom_read = robot.get_position()
                 controller.send_approach_request(waypoint_coordinate_x=center_point.x,
                                                 waypoint_coordinate_y=center_point.y,
-                                                waypoint_name='Pre Approach Point',
-                                                desired_yaw=desired_yaw_5)
+                                                waypoint_name='Center Point',
+                                                desired_yaw=desired_yaw_2,
+                                                calculate_yaw=True)
                 second_pos = False
                 # wait until robot reach the pre approach point
                 while not second_pos:
                     second_pos = controller.get_action_result()
                     rclpy.spin_once(controller)
-                
-                # if robot reached the pre approach point, then go to the middle point 
-                if second_pos:
-                    controller.send_approach_request(waypoint_coordinate_x=middle_point.x,
-                                                    waypoint_coordinate_y=middle_point.y,
-                                                    waypoint_name='Middle Point',
-                                                    desired_yaw=desired_yaw_3)
-                    third_pos = False   
-                    # wait until robot reach the middle point
-                    while not third_pos:
-                        third_pos = controller.get_action_result()
-                        rclpy.spin_once(controller)
-
-                    if third_pos:
-                        controller.send_approach_request(waypoint_coordinate_x=center_point.x,
-                                                        waypoint_coordinate_y=center_point.y,
-                                                        waypoint_name='Center Point', 
-                                                        desired_yaw=desired_yaw_4)
-                        fourth_pos = False
-                        # wait until robot reach the center point
-                        while not fourth_pos:
-                            fourth_pos = controller.get_action_result()
-                            rclpy.spin_once(controller)
-
+            
                     
             # if all waypoints where reached, then lift the table. 
-            if first_pos and second_pos and third_pos and fourth_pos:
+            if first_pos and second_pos:
                 print('Robot is in table center position.')
                 time.sleep(5)
                 manager.lift_table()
