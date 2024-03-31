@@ -4,6 +4,7 @@ import tf2_ros
 from geometry_msgs.msg import TransformStamped, Point
 from std_srvs.srv import SetBool
 from rclpy.time import Time
+import math
 
 class TableTransformPublisher(Node):
     def __init__(self):
@@ -29,10 +30,12 @@ class TableTransformPublisher(Node):
         self.center_point_transform = Point()
         self.approach_point_transform = Point()
         self.robot_position = Point()
+        self.odom_map = Point()
 
         # save table positions from robot_base_link
         self.table_leg_1 = Point()
         self.odom_table_leg_1 = Point()
+        self.map_table_leg_1 = Point()
         self.center_point = Point()
         self.odom_center_point = Point()
         self.approach_point = Point()
@@ -66,6 +69,7 @@ class TableTransformPublisher(Node):
                 self.center_point_transform = self.get_transform(target_frame='table_center', source_frame='robot_base_link')
                 self.approach_point_transform = self.get_transform(target_frame='approach_distance', source_frame='robot_base_link')
                 self.robot_position = self.get_transform(target_frame='robot_base_link', source_frame='odom')
+                self.odom_map = self.get_transform(target_frame='map', source_frame='odom')
                 if self.leg_1_transform and self.robot_position and self.approach_point_transform and self.robot_position:
                     # indicate that the transfrom is running well
                     self.process = True
@@ -96,23 +100,41 @@ class TableTransformPublisher(Node):
             self.odom_approach_point.x = ((self.approach_point.x * -1) + self.robot_position.transform.translation.x) * -1
             self.odom_approach_point.y = self.approach_point.y - (self.robot_position.transform.translation.y) 
 
-            # publish first leg static transform
-            self.publish_table_transform(frame='table_leg_1',
-                                        source_frame='map',
-                                        y_coordinate= self.odom_table_leg_1.x,
-                                        x_coordinate= self.odom_table_leg_1.y)
-            
-            # publish first leg static transform
-            self.publish_table_transform(frame='table_center_point',
-                                        source_frame='map',
-                                        y_coordinate= self.odom_center_point.x,
-                                        x_coordinate= self.odom_center_point.y)
+            # calcula yaw error between odom and map
+            rotation = self.odom_map.transform.rotation
+            yaw = self.calculate_yaw(q_x=rotation.x, q_y=rotation.y, q_z=rotation.z, q_w=rotation.w)
+            yaw = math.degrees(yaw)
 
-            # publish first leg static transform
+            # extract odom to map pos offset
+            offset_x = self.odom_map.transform.translation.x
+            offset_y = self.odom_map.transform.translation.y
+
+            # rotate in odom to the yaw the frame is rotate
+            fixed_table_x, fixed_table_y = self.rotate_point(x=self.odom_table_leg_1.x, y=self.odom_table_leg_1.y, yaw=yaw)
+            fixed_center_x, fixed_center_y = self.rotate_point(x=self.odom_center_point.x, y=self.odom_center_point.y, yaw=yaw)
+            fixed_approach_x, fixed_approach_y = self.rotate_point(x=self.odom_approach_point.x, y=self.odom_approach_point.y, yaw=yaw)
+
+            # publish first leg  transform
+            self.publish_table_transform(frame='table_leg_1',
+                                        source_frame='odom',
+                                        y_coordinate= fixed_table_x,
+                                        x_coordinate= -fixed_table_y)
+            
+            # publish first leg  transform
+            self.publish_table_transform(frame='table_center_point',
+                                        source_frame='odom',
+                                        y_coordinate= fixed_center_x,
+                                        x_coordinate= -fixed_center_y)
+
+            # publish first leg  transform
             self.publish_table_transform(frame='table_approach_point',
-                                        source_frame='map',
-                                        y_coordinate= self.odom_approach_point.x,
-                                        x_coordinate= self.odom_approach_point.y)
+                                        source_frame='odom',
+                                        y_coordinate= fixed_approach_x,
+                                        x_coordinate= -fixed_approach_y)
+
+            self.get_logger().info("Leg X : %f" % self.odom_table_leg_1.x)
+            self.get_logger().info("Leg Y : %f" % self.odom_table_leg_1.y)
+            self.get_logger().info("Odom Yaw Offset: %f" % yaw)
 
             # indicate process is running
             self.get_logger().warning('Publishing Transform')
@@ -162,6 +184,24 @@ class TableTransformPublisher(Node):
         tf_msg.transform.rotation.z = 0.0
         tf_msg.transform.rotation.w = 1.0
         self.tf_broadcaster.sendTransform(tf_msg)
+
+    def calculate_yaw(self, q_x, q_y, q_z, q_w):
+        # Calcular ángulo de yaw
+        yaw = math.atan2(2 * (q_w * q_z + q_x * q_y), 1 - 2 * (q_y**2 + q_z**2))
+        
+        # Ajustar el ángulo para que esté en el rango [-pi, pi]
+        if yaw > math.pi:
+            yaw -= 2 * math.pi
+        elif yaw < -math.pi:
+            yaw += 2 * math.pi
+        
+        return yaw
+    
+    def rotate_point(self, x, y, yaw):
+        theta = math.radians(yaw)        
+        x_prime = x * math.cos(theta) - y * math.sin(theta)
+        y_prime = x * math.sin(theta) + y * math.cos(theta)
+        return x_prime, y_prime
 
 def main(args=None):
     rclpy.init(args=args)
