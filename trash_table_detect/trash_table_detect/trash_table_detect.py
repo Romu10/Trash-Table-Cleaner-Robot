@@ -9,8 +9,9 @@ from sklearn.cluster import KMeans
 from scipy.spatial.transform import Rotation
 from rclpy.node import Node
 import tf2_ros
-from geometry_msgs.msg import TransformStamped
+from geometry_msgs.msg import TransformStamped, Point
 from sensor_msgs.msg import LaserScan
+from std_srvs.srv import SetBool
 from nav_msgs.msg import Odometry
 from detection_interfaces.srv import DetectTableLegs
 from rclpy.executors import MultiThreadedExecutor
@@ -31,14 +32,52 @@ class TrashTableDetection(Node):
         # define a subscription for laser scan
         self.laserscan_subscription = self.create_subscription(LaserScan, 'table_scan_filtered', self.laser_callback, 10,
                                                                 callback_group=ReentrantCallbackGroup())
+        
+        # define a subsription for odom
+        self.odom_subscription = self.create_subscription(Odometry, '/diffbot_base_controller/odom', self.odom_callback, 10, 
+                                                                callback_group=ReentrantCallbackGroup())
 
         # define the service
         self.srv = self.create_service(DetectTableLegs, 'find_table_srv', self.find_table_srv)
 
+        # create a service client
+        self.publish_table_static_tf = self.create_client(SetBool, 'publish_table_frame_srv')
+        
+        # wait until service gets online
+        while not self.publish_table_static_tf.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Static Transform service not available, waiting again...')
+        
+        # flag for starting the transform publisher
+        self.send_transform = False
+        
         # define the tf broadcaster to publish tf
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
+        # create table legs vars
+        self.table_leg_1 = Point()
+        self.table_leg_2 = Point()
+        self.table_leg_3 = Point()
+        self.table_leg_4 = Point()
+
+        self.found_table = False
+
         self.get_logger().info('Table Detection Service Online...')
+    
+
+    def publish_table_frame(self, send_transform):
+        if send_transform:
+            request = SetBool.Request()
+
+            # Set Ready
+            request.data = True
+
+            response_future = self.publish_table_static_tf.call_async(request)
+            response = response_future
+
+            if response.result:
+                self.get_logger().info('Static Transform published correctly')
+            else:
+                self.get_logger().warning('Static Transform Failed')
 
     def find_table_srv(self, request, response):
 
@@ -46,23 +85,26 @@ class TrashTableDetection(Node):
 
         while not self.found_table:
             self.get_logger().info('Verifying table precenses...')
+            if self.found_table:    
+                break
         
         if self.found_table:
             response.success = True
             response.message = '¡Table Found!'
-            response.table_center_point.x = round(self.table_center_point[0], 2)
-            response.table_center_point.y = round(self.table_center_point[1], 2)
-            response.table_middle_point.x = round(self.leg_middle_point[0], 2)
-            response.table_middle_point.y = round(self.leg_middle_point[1], 2)
-            response.approach_distance_point.x = round(self.approach_point[0], 2)
-            response.approach_distance_point.y = round(self.approach_point[1], 2)
-            response.pre_approach_distance_point.x = round(self.pre_approach_point[0], 2)
-            response.pre_approach_distance_point.y = round(self.pre_approach_point[1], 2)
+            self.get_logger().info('Table Found!')
+            self.publish_table_frame(send_transform=True)
 
         else:
             response.success = False
             response.message = '¡Table Not Found!'
+            self.get_logger().info('Table Not Found!')
         return response
+
+    # odometry callback function
+    def odom_callback(self, msg):
+
+        # get robots positions
+        self._position = msg.pose.pose.position
 
     # laser callback function
     def laser_callback(self, msg):
@@ -162,28 +204,28 @@ class TrashTableDetection(Node):
 
             # Publish Table Legs Transform
             self.publish_table_transform(frame='leg_1', x_coordinate=sorted_table_legs_with_distance[0,0], y_coordinate=sorted_table_legs_with_distance[0,1])
-            self.publish_table_transform(frame='leg_2', x_coordinate=sorted_table_legs_with_distance[1,0], y_coordinate=sorted_table_legs_with_distance[1,1])
-            self.publish_table_transform(frame='leg_3', x_coordinate=sorted_table_legs_with_distance[2,0], y_coordinate=sorted_table_legs_with_distance[2,1])
-            self.publish_table_transform(frame='leg_4', x_coordinate=sorted_table_legs_with_distance[3,0], y_coordinate=sorted_table_legs_with_distance[3,1])
+            #self.publish_table_transform(frame='leg_2', x_coordinate=sorted_table_legs_with_distance[1,0], y_coordinate=sorted_table_legs_with_distance[1,1])
+            #self.publish_table_transform(frame='leg_3', x_coordinate=sorted_table_legs_with_distance[2,0], y_coordinate=sorted_table_legs_with_distance[2,1])
+            #self.publish_table_transform(frame='leg_4', x_coordinate=sorted_table_legs_with_distance[3,0], y_coordinate=sorted_table_legs_with_distance[3,1])
 
             # Publish Table Approach Path
             self.publish_table_transform(frame='table_center', x_coordinate=self.table_center_point[0], y_coordinate=self.table_center_point[1])
-            self.publish_table_transform(frame='table_middle', x_coordinate=self.leg_middle_point[0], y_coordinate=self.leg_middle_point[1])
+            #self.publish_table_transform(frame='table_middle', x_coordinate=self.leg_middle_point[0], y_coordinate=self.leg_middle_point[1])
             self.publish_table_transform(frame='approach_distance', x_coordinate=self.approach_point[0], y_coordinate=self.approach_point[1])
 
             # plot graph to visualize data
             #self.plot_data()
 
             # inform table found 
-            print('Trash Table Detected')
+            #print('Trash Table Detected')
 
             # update service 
             self.found_table = True
 
-        else:
+        #else:
 
             # inform table not found
-            print('Trash Table NOT Detected')
+            #print('Trash Table NOT Detected')
 
     
     def plot_data(self):

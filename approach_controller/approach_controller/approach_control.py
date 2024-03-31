@@ -146,7 +146,7 @@ class ApproachController(Node):
         # robot +yaw = left - calculated -yaw = left
         # robot -yaw = right - calculated +yaw = right 
 
-        # this give me the desired rad in robot coordinates
+        # calculate yaw is true for second waypoint
         if calculate_yaw:
             needed_yaw = self._yaw - desired_yaw
             err_yaw_cal = needed_yaw
@@ -181,6 +181,7 @@ class ApproachController(Node):
             #desired_yaw = math.atan2(self._des_pos.y - self._position.y, self._des_pos.x - self._position.x)
             #needed_yaw = self._yaw - desired_yaw
             if calculate_yaw:
+                # sum offset to reduce error in simulation
                 err_yaw = desired_yaw - self._yaw
             else:
                 err_yaw = err_yaw_cal - self._yaw 
