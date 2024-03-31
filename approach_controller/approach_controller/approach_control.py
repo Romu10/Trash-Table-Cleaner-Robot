@@ -129,48 +129,39 @@ class ApproachController(Node):
 
         # helper variables
         success = True
+        self.current_position = (0.0, 0.0)
+        self.distance_traveled = 0.0
+        desired_yaw = 0.0
 
         # define desired position and errors
         self._des_pos = goal_handle.request.goal_position
         self.get_logger().info("Point X position: %f" % self._des_pos.x)
         self.get_logger().info("Point Y position: %f" % self._des_pos.y)
-
-        self.get_logger().info("Current X position: %f" % self._position.x)
-        self.get_logger().info("Current Y position: %f" % self._position.y)
-
-        desired_yaw = goal_handle.request.desired_yaw
-        calculate_yaw = goal_handle.request.calculate_yaw
-        #desired_yaw = math.atan2(self._des_pos.y - self._position.y, self._des_pos.x - self._position.x)
+        err_yaw = math.atan2(self._des_pos.y - 0, self._des_pos.x - 0)
+        
+        # calculate de error yaw, sum the current yaw with the calculate yaw to obtain the desired one
+        desired_yaw = self._yaw - desired_yaw
         #self.desired_yaw_list.append(desired_yaw)
 
+        # calculate the forward distance needed
+        travel_dist = math.sqrt(pow(self._des_pos.y - 0, 2) + pow(self._des_pos.x - 0, 2))
+        needed_position = self._position.x + travel_dist
+        
         # robot +yaw = left - calculated -yaw = left
         # robot -yaw = right - calculated +yaw = right 
-
-        # calculate yaw is true for second waypoint
-        if calculate_yaw:
-            needed_yaw = self._yaw - desired_yaw
-            err_yaw_cal = needed_yaw
-            self.get_logger().info("Request Calculate Yaw")
-        else:
-            needed_yaw = self._yaw - desired_yaw
-            err_yaw_cal = needed_yaw
-            self.get_logger().info("Do NOT Request Calculate Yaw")
-
-        err_pos = math.sqrt(pow(self._des_pos.y - self._position.y, 2) + pow(self._des_pos.x - self._position.x, 2))
 
         self.get_logger().info("=============================================")
         self.get_logger().info("Calculated Yaw: %f" % desired_yaw)
         self.get_logger().info("Current Yaw: %f" % self._yaw)
-        self.get_logger().info("Needed Yaw: %f" % needed_yaw)
-        self.get_logger().info("Error Yaw Cal: %f" % err_yaw_cal)
-        self.get_logger().info("Error Pos: %f" % err_pos)
+        self.get_logger().info("Needed Yaw: %f" % err_yaw)
+        self.get_logger().info("Error Pos: %f" % travel_dist)
         self.get_logger().info("=============================================")
 
         rot_vel = 0.0
         prev_time = None
         elapsed_time = 0
         start_time = time.time()
-        time.sleep(10)
+        time.sleep(5)
 
         # perform task
         while success:
@@ -178,21 +169,11 @@ class ApproachController(Node):
             time.sleep(0.1)
 
             # Update variables
-            #desired_yaw = math.atan2(self._des_pos.y - self._position.y, self._des_pos.x - self._position.x)
-            #needed_yaw = self._yaw - desired_yaw
-            if calculate_yaw:
-                # sum offset to reduce error in simulation
-                err_yaw = desired_yaw - self._yaw
-            else:
-                err_yaw = err_yaw_cal - self._yaw 
-            
-            # calculate the distances between points
-            #err_pos = math.sqrt(pow(self._des_pos.y - self._position.y, 2) + pow(self._des_pos.x - self._position.x, 2))
-            err_pos = self._des_pos.x - self._position.x
+            err_yaw = self._yaw - desired_yaw
 
-            # Check if the position error is within the precision threshold
-            if err_pos < self._dist_precision:
-                break  # Exit the loop if the position error is within the precision threshold
+            # Check if the robot traveled the desired position in x axis 
+            if self._position.x > needed_position:
+                break  
 
             # Calculate control commands using PID
             if prev_time is not None:  
@@ -202,12 +183,11 @@ class ApproachController(Node):
 
             # Print variable status
             self.get_logger().info("Current Yaw: %s" % str(self._yaw))
-            #self.get_logger().info("Desired Yaw: %s" % str(desired_yaw))
-            #self.get_logger().info("Needed Yaw: %f" % needed_yaw)
+            self.get_logger().info("Desired Yaw: %s" % str(desired_yaw))
             self.get_logger().info("Error Yaw: %s" % str(err_yaw))
-            self.get_logger().info("Error Pos: %s" % str(err_pos))
-            #self.get_logger().info("Current X position: %f" % self._position.x)
-            #self.get_logger().info("Current Y position: %f" % self._position.y)
+            self.get_logger().info("Needed X: %s" % str(needed_position))
+            self.get_logger().info("Current X: %s" % str(self._position.x))
+
      
             # Logic goes here
             if goal_handle.is_cancel_requested:
@@ -227,14 +207,14 @@ class ApproachController(Node):
                 self._pub_cmd_vel.publish(twist_msg)
 
             else:
-                lin_vel = self.pid_controller_lin.calculate(err_pos, dt)
+                #lin_vel = self.pid_controller_lin.calculate(err_pos, dt)
                 #rot_vel = self.pid_controller_ang.calculate(math.fabs(err_yaw), dt)
                 rot_vel = self.pid_controller_ang.calculate(err_yaw, dt)
                 # Go to point
                 #self.get_logger().info("going to point: %s" % str(goal_handle.request.goal_name))
                 self._state = goal_handle.request.goal_name
                 twist_msg = Twist()
-                twist_msg.linear.x = lin_vel
+                twist_msg.linear.x = 0.12
                 #twist_msg.angular.z = rot_vel if err_yaw > 0 else -rot_vel
                 twist_msg.angular.z = rot_vel
                 self._pub_cmd_vel.publish(twist_msg)
@@ -301,7 +281,7 @@ class ApproachController(Node):
         elif yaw < -math.pi:
             yaw += 2 * math.pi
         
-        return yaw
+        return -yaw
 
     def odom_callback(self, msg):
         

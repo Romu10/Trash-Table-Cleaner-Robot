@@ -1,8 +1,6 @@
 # Request
 geometry_msgs/Point goal_position
-float32 desired_yaw
 string goal_name
-bool calculate_yaw
 ---
 # Result
 bool success

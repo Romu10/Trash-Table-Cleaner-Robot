@@ -3,8 +3,11 @@ from rclpy.node import Node
 import tf2_ros
 from geometry_msgs.msg import TransformStamped, Point
 from std_srvs.srv import SetBool
+from detection_interfaces.srv import TablePosition
 from rclpy.time import Time
 import math
+from rclpy.executors import MultiThreadedExecutor
+from rclpy.callback_groups import ReentrantCallbackGroup
 
 class TableTransformPublisher(Node):
     def __init__(self):
@@ -15,7 +18,7 @@ class TableTransformPublisher(Node):
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
         # define the service
-        self.srv = self.create_service(SetBool, 'publish_table_frame_srv', self.publish_table_frame_srv)
+        self.srv = self.create_service(TablePosition, 'get_position_tf', self.get_position_from_tf, callback_group=ReentrantCallbackGroup())
 
         # define tf listener 
         self.tf_buffer = tf2_ros.Buffer()
@@ -55,9 +58,9 @@ class TableTransformPublisher(Node):
         self.process = False
 
         # Call on_timer function every second
-        self.timer = self.create_timer(0.1, self.on_timer)
+        self.timer = self.create_timer(0.1, self.on_timer, callback_group=ReentrantCallbackGroup())
         
-        self.get_logger().info('Table Transform Publisher Service Online...')
+        self.get_logger().info('Transform Position Service Online...')
     
     def on_timer(self):
 
@@ -113,7 +116,8 @@ class TableTransformPublisher(Node):
             fixed_table_x, fixed_table_y = self.rotate_point(x=self.odom_table_leg_1.x, y=self.odom_table_leg_1.y, yaw=yaw)
             fixed_center_x, fixed_center_y = self.rotate_point(x=self.odom_center_point.x, y=self.odom_center_point.y, yaw=yaw)
             fixed_approach_x, fixed_approach_y = self.rotate_point(x=self.odom_approach_point.x, y=self.odom_approach_point.y, yaw=yaw)
-
+            
+            '''
             # publish first leg  transform
             self.publish_table_transform(frame='table_leg_1',
                                         source_frame='odom',
@@ -137,7 +141,11 @@ class TableTransformPublisher(Node):
             self.get_logger().info("Odom Yaw Offset: %f" % yaw)
 
             # indicate process is running
-            self.get_logger().warning('Publishing Transform')
+            '''
+            # end cycle
+            self.start_broadcasting = False
+
+            self.get_logger().warning('Got Transform')
 
 
     def get_transform(self, target_frame, source_frame):
@@ -152,7 +160,7 @@ class TableTransformPublisher(Node):
             return None
 
         
-    def publish_table_frame_srv(self, request, response):
+    def get_position_from_tf(self, request, response):
         
         # get the indication of start broadcasting from service
         self.start_broadcasting = request.data
@@ -162,10 +170,16 @@ class TableTransformPublisher(Node):
         else:
             self.get_logger().warning('Stop Publishing Transform')
 
+        while not self.process:
+            self.get_logger().warning('Waiting')
+
         # return the result of the error
         response.success = self.process
         if response.success:
             response.message= 'Process Running Well'
+            response.center_point.x = self.center_point.x 
+            response.center_point.y = self.center_point.y 
+            self.get_logger().warning('Success')
         else:
             response.message= 'Process NOT Running Well'
 
@@ -208,9 +222,12 @@ def main(args=None):
 
     table_transform_publisher = TableTransformPublisher()
 
-    rclpy.spin(table_transform_publisher)
+    # Use a MultiThreadedExecutor to enable processing goals concurrently
+    executor = MultiThreadedExecutor()
 
-    table_transform_publisher.destroy_node()
+    rclpy.spin(table_transform_publisher, executor=executor)
+
+    table_transform_publisher.destroy()
     rclpy.shutdown()
 
 

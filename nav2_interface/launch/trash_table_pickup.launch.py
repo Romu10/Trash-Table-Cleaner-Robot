@@ -25,6 +25,11 @@ def generate_launch_description():
             package='approach_controller',
             executable='move_table_back',
             name='move_table_back'
+        ),
+        Node(
+            package='approach_controller',
+            executable='table_transforms',
+            name='table_transforms'
         )
 
     ])

@@ -57,7 +57,7 @@ private:
             laser_in_range_msg.time_increment = msg->time_increment;
             laser_in_range_msg.scan_time = msg->scan_time;
             laser_in_range_msg.range_min = msg->range_min;
-            laser_in_range_msg.range_max = msg->range_max;
+            laser_in_range_msg.range_max = 3.0;
 
             // Filter the readings inside the desired angle 
             for (size_t i = 0; i < num_readings; ++i)

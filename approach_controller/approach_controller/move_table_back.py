@@ -28,10 +28,10 @@ class MoveTableBack(Node):
         twist_msg = Twist()
         start_time = time.time()
         elapsed_time = 0.0
-        while elapsed_time < 15:
+        while elapsed_time < 20:
             elapsed_time = time.time() - start_time
-            twist_msg.linear.x = -0.10
-            twist_msg.angular.z = 0.00
+            twist_msg.linear.x = -0.20
+            twist_msg.angular.z = -0.02
             self._pub_cmd_vel.publish(twist_msg)
         response.success = True
         response.message = 'Ready'

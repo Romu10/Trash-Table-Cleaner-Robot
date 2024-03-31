@@ -13,7 +13,7 @@ from geometry_msgs.msg import TransformStamped, Point
 from sensor_msgs.msg import LaserScan
 from std_srvs.srv import SetBool
 from nav_msgs.msg import Odometry
-from detection_interfaces.srv import DetectTableLegs
+from detection_interfaces.srv import DetectTableLegs, TablePosition
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import ReentrantCallbackGroup
 
@@ -40,12 +40,6 @@ class TrashTableDetection(Node):
         # define the service
         self.srv = self.create_service(DetectTableLegs, 'find_table_srv', self.find_table_srv)
 
-        # create a service client
-        self.publish_table_static_tf = self.create_client(SetBool, 'publish_table_frame_srv')
-        
-        # wait until service gets online
-        while not self.publish_table_static_tf.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Static Transform service not available, waiting again...')
         
         # flag for starting the transform publisher
         self.send_transform = False
@@ -54,30 +48,12 @@ class TrashTableDetection(Node):
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
         # create table legs vars
-        self.table_leg_1 = Point()
-        self.table_leg_2 = Point()
-        self.table_leg_3 = Point()
-        self.table_leg_4 = Point()
+        self.center_point_frame = Point()
 
         self.found_table = False
 
         self.get_logger().info('Table Detection Service Online...')
     
-
-    def publish_table_frame(self, send_transform):
-        if send_transform:
-            request = SetBool.Request()
-
-            # Set Ready
-            request.data = True
-
-            response_future = self.publish_table_static_tf.call_async(request)
-            response = response_future
-
-            if response.result:
-                self.get_logger().info('Static Transform published correctly')
-            else:
-                self.get_logger().warning('Static Transform Failed')
 
     def find_table_srv(self, request, response):
 
@@ -92,7 +68,6 @@ class TrashTableDetection(Node):
             response.success = True
             response.message = '¡Table Found!'
             self.get_logger().info('Table Found!')
-            self.publish_table_frame(send_transform=True)
 
         else:
             response.success = False
