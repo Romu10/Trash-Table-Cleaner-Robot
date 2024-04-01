@@ -4,9 +4,7 @@ import rclpy
 import numpy as np
 from itertools import permutations
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
 from sklearn.cluster import KMeans
-from scipy.spatial.transform import Rotation
 from rclpy.node import Node
 import tf2_ros
 from geometry_msgs.msg import TransformStamped, Point
