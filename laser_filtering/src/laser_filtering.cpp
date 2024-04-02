@@ -18,7 +18,7 @@ public:
         table_scan_filtered_ = this->create_publisher<sensor_msgs::msg::LaserScan>("/table_scan_filtered", 10);
 
         // Define scan subscriber
-        scan_sub_ = this-> create_subscription<sensor_msgs::msg::LaserScan>("/scan", 10, 
+        scan_sub_ = this-> create_subscription<sensor_msgs::msg::LaserScan>("/cleaner_2/scan", 10, 
             std::bind(&TrashTableDetect::scan_callback, this, std::placeholders::_1));
 
         RCLCPP_INFO_ONCE(this->get_logger(), "Laser Filtering Node Online...");

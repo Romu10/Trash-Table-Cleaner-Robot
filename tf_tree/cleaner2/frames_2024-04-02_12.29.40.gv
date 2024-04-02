@@ -1,0 +1,32 @@
+digraph G {
+"cleaner_2/base_link" -> "cleaner_2/cliff_side_left"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/odom" -> "cleaner_2/base_link"[label=" Broadcaster: default_authority\nAverage rate: 20.201\nBuffer length: 4.802\nMost recent transform: 1712060980.191869\nOldest transform: 1712060975.390229\n"];
+"cleaner_2/base_link" -> "cleaner_2/cliff_front_left"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/cliff_front_right"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/cliff_side_right"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/bump_left"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/bump_front_left"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/bump_front_center"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/bump_front_right"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/bump_right"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/ir_intensity_side_left"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/ir_intensity_left"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/ir_intensity_front_left"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/ir_intensity_front_center_left"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/ir_intensity_front_center_right"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/ir_intensity_front_right"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/ir_intensity_right"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/ir_omni"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/mouse"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/left_wheel"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/right_wheel"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/button_1"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/button_2"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/button_power"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/base_link" -> "cleaner_2/imu"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"cleaner_2/odom" -> "cleaner_2/base_footprint"[label=" Broadcaster: default_authority\nAverage rate: 20.201\nBuffer length: 4.802\nMost recent transform: 1712060980.191869\nOldest transform: 1712060975.390229\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1712060980.330273"[ shape=plaintext ] ;
+}->"cleaner_2/odom";
+}

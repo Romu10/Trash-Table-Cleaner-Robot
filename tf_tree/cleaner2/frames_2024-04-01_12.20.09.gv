@@ -1,9 +1,0 @@
-digraph G {
-"cleaner_2/base_link" -> "cleaner_2/laser_sensor_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
-"cleaner_2/odom" -> "cleaner_2/base_link"[label=" Broadcaster: default_authority\nAverage rate: 20.201\nBuffer length: 4.95\nMost recent transform: 1711974009.114589\nOldest transform: 1711974004.164277\n"];
-"cleaner_2/odom" -> "cleaner_2/base_footprint"[label=" Broadcaster: default_authority\nAverage rate: 20.201\nBuffer length: 4.95\nMost recent transform: 1711974009.114589\nOldest transform: 1711974004.164277\n"];
-edge [style=invis];
- subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
-"Recorded at time: 1711974009.215816"[ shape=plaintext ] ;
-}->"cleaner_2/odom";
-}
