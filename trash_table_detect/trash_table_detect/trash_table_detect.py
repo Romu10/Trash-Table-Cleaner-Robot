@@ -32,7 +32,7 @@ class TrashTableDetection(Node):
                                                                 callback_group=ReentrantCallbackGroup())
         
         # define a subsription for odom
-        self.odom_subscription = self.create_subscription(Odometry, '/diffbot_base_controller/odom', self.odom_callback, 10, 
+        self.odom_subscription = self.create_subscription(Odometry, '/cleaner_2/odom', self.odom_callback, 10, 
                                                                 callback_group=ReentrantCallbackGroup())
 
         # define the service
@@ -83,7 +83,7 @@ class TrashTableDetection(Node):
     def laser_callback(self, msg):
 
         # receive the laser filtered data
-        self.laser_data = msg.ranges
+        self.laser_data = np.round(msg.ranges, 4)
         # print(self.laser_data)
 
         # count the number of data received 
@@ -101,7 +101,10 @@ class TrashTableDetection(Node):
         self.y_coordinates = np.multiply(self.laser_data, np.sin(angles))
 
         # merge data
-        self.data = np.column_stack((self.y_coordinates, self.x_coordinates))
+        data_with_inf = np.column_stack((self.y_coordinates, self.x_coordinates))
+        # filter finite values
+        finite_indices = np.isfinite(data_with_inf).all(axis=1)
+        self.data = data_with_inf[finite_indices]
         # print('\nLaser Data\n', self.data)
         # print('Data lenght: %i' % len(self.data))
 
@@ -187,7 +190,7 @@ class TrashTableDetection(Node):
             self.publish_table_transform(frame='approach_distance', x_coordinate=self.approach_point[0], y_coordinate=self.approach_point[1])
 
             # plot graph to visualize data
-            #self.plot_data()
+            self.plot_data()
 
             # inform table found 
             #print('Trash Table Detected')
@@ -491,8 +494,6 @@ class TrashTableDetection(Node):
             print('\nCalculated Square Center:', square_center)
         return square_center
     
-    import numpy as np
-
     def calculate_approach_point(self, leg_middle_point, table_center_point, approach_distance, display):
         leg_middle_point = np.array(leg_middle_point)
         table_center_point = np.array(table_center_point)
