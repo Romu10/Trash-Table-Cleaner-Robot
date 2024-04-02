@@ -83,7 +83,7 @@ class TrashTableDetection(Node):
     def laser_callback(self, msg):
 
         # receive the laser filtered data
-        self.laser_data = np.round(msg.ranges, 4)
+        self.laser_data = msg.ranges
         # print(self.laser_data)
 
         # count the number of data received 
@@ -119,7 +119,7 @@ class TrashTableDetection(Node):
         self.calculate_cluster_error(number_of_groups=self.k, display=False)
 
         # create a matrix where each point shows its cluster group
-        self.print_data_matrix(display=False)
+        #self.print_data_matrix(display=False)
         
         # count how many points are in each group
         self.count_cluster_repetitions(display=False)
@@ -140,7 +140,7 @@ class TrashTableDetection(Node):
         self.selected_points_with_distances_sorted_filtered(self.sorted_matrix_with_coord_dist, column=4, max_value=distances_average, display=False)
 
         # eliminate points that are more far than the specified values (filter)
-        self.filter_coordinates(max_legs_distance=0.72, min_leg_distance=0.62, display=False)
+        self.filter_coordinates(max_legs_distance=0.85, min_leg_distance=0.35, display=False)
 
         # eliminate points that are too close and get the result
         self.legs_coordinates_with_no_reps = self.verify_close_points(self.array_final, threshold=0.3, display=False)
@@ -149,7 +149,7 @@ class TrashTableDetection(Node):
         self.leg_distances = self.calculate_distance_to_zero(coordinates=self.legs_coordinates_with_no_reps, name_of_coordinates= 'Table Leg Distances', display=False)
         
         # permutate and search for the exactly combination of square sides and diagonals
-        self.table_square = self.find_square(points=self.legs_coordinates_with_no_reps, max_legs_side_distance=0.75, min_leg_side_distance=0.60, max_diagonal_distance=1.20, min_diagonal_distance=0.90)
+        self.table_square = self.find_square(points=self.legs_coordinates_with_no_reps, max_legs_side_distance=0.80, min_leg_side_distance=0.40, max_diagonal_distance=0.70, min_diagonal_distance=0.40)
 
         if len(self.table_square) > 0:
             # print('Square Coordinates Posible:', len(self.table_square))
@@ -179,29 +179,29 @@ class TrashTableDetection(Node):
             self.approach_path = self.create_approach_path(approach_point=self.approach_point, leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, display=False)
 
             # Publish Table Legs Transform
-            self.publish_table_transform(frame='leg_1', x_coordinate=sorted_table_legs_with_distance[0,0], y_coordinate=sorted_table_legs_with_distance[0,1])
+            #self.publish_table_transform(frame='leg_1', x_coordinate=sorted_table_legs_with_distance[0,0], y_coordinate=sorted_table_legs_with_distance[0,1])
             #self.publish_table_transform(frame='leg_2', x_coordinate=sorted_table_legs_with_distance[1,0], y_coordinate=sorted_table_legs_with_distance[1,1])
             #self.publish_table_transform(frame='leg_3', x_coordinate=sorted_table_legs_with_distance[2,0], y_coordinate=sorted_table_legs_with_distance[2,1])
             #self.publish_table_transform(frame='leg_4', x_coordinate=sorted_table_legs_with_distance[3,0], y_coordinate=sorted_table_legs_with_distance[3,1])
 
             # Publish Table Approach Path
-            self.publish_table_transform(frame='table_center', x_coordinate=self.table_center_point[0], y_coordinate=self.table_center_point[1])
+            #self.publish_table_transform(frame='table_center', x_coordinate=self.table_center_point[0], y_coordinate=self.table_center_point[1])
             #self.publish_table_transform(frame='table_middle', x_coordinate=self.leg_middle_point[0], y_coordinate=self.leg_middle_point[1])
-            self.publish_table_transform(frame='approach_distance', x_coordinate=self.approach_point[0], y_coordinate=self.approach_point[1])
+            #self.publish_table_transform(frame='approach_distance', x_coordinate=self.approach_point[0], y_coordinate=self.approach_point[1])
 
             # plot graph to visualize data
-            self.plot_data()
+            # self.plot_data()
 
             # inform table found 
-            #print('Trash Table Detected')
+            print('Trash Table Detected')
 
             # update service 
             self.found_table = True
 
-        #else:
+        else:
 
             # inform table not found
-            #print('Trash Table NOT Detected')
+            print('Trash Table NOT Detected')
 
     
     def plot_data(self):
