@@ -101,7 +101,7 @@ class TrashTableDetection(Node):
         self.y_coordinates = np.multiply(self.laser_data, np.sin(angles))
 
         # merge data
-        data_with_inf = np.column_stack((self.y_coordinates, self.x_coordinates))
+        data_with_inf = np.column_stack((-self.y_coordinates, self.x_coordinates))
         # filter finite values
         finite_indices = np.isfinite(data_with_inf).all(axis=1)
         self.data = data_with_inf[finite_indices]
@@ -190,7 +190,7 @@ class TrashTableDetection(Node):
             #self.publish_table_transform(frame='approach_distance', x_coordinate=self.approach_point[0], y_coordinate=self.approach_point[1])
 
             # plot graph to visualize data
-            # self.plot_data()
+            self.plot_data()
 
             # inform table found 
             print('Trash Table Detected')
@@ -210,8 +210,9 @@ class TrashTableDetection(Node):
         
         plt.subplots_adjust(wspace=0.4, hspace=0.6)
         fig.patch.set_facecolor('black')
-
-        axs[0,0].scatter(self.data[:,0], self.data[:,1], c=self.kmeans.labels_.astype(float), s=50, label='Data Groups')
+        c=self.kmeans.labels_.astype(float)
+        c_n = c[:len(self.data[:,0])]
+        axs[0,0].scatter(self.data[:,0], self.data[:,1], c=c_n, s=50, label='Data Groups')
         axs[0,0].scatter(self.centroids[:,0], self.centroids[:,1], c='red', marker='*', s=50, label='Groups Centroids')  
         axs[0,0].legend()
         axs[0,0].set_title('Groups With Centroids', color='white')  
@@ -262,6 +263,11 @@ class TrashTableDetection(Node):
         axs[0,2].spines['left'].set_color('white')
         axs[0,2].tick_params(axis='x', colors='white', labelcolor='white') 
         axs[0,2].tick_params(axis='y', colors='white', labelcolor='white') 
+
+
+        min_length = min(len(self.krango), len(self.sse))
+        self.krango = self.krango[:min_length]
+        self.sse = self.sse[:min_length]
 
         axs[1,0].scatter(self.krango, self.sse, c='red', marker='o', label='K Value')
         axs[1,0].plot(self.krango, self.sse, c='blue')
