@@ -15,16 +15,23 @@ def generate_launch_description():
             executable='cartographer_node', 
             name='cartographer_node',
             output='screen',
-            parameters=[{'use_sim_time': True}],
+            parameters=[{'use_sim_time': False}],
             arguments=['-configuration_directory', cartographer_config_dir,
-                       '-configuration_basename', configuration_basename]),
-
+                       '-configuration_basename', configuration_basename],
+            remappings=[('/scan','/cleaner_2/scan'),
+                        ('/odom','/cleaner_2/odom'),
+                        ('/tf','/cleaner_2/tf')],
+        ),
+            
         Node(
             package='cartographer_ros',
             executable='cartographer_occupancy_grid_node',
             output='screen',
             name='occupancy_grid_node',
-            parameters=[{'use_sim_time': True}],
-            arguments=['-resolution', '0.05', '-publish_period_sec', '1.0']
+            parameters=[{'use_sim_time': False}],
+            arguments=['-resolution', '0.05', '-publish_period_sec', '1.0'],
+            remappings=[('/scan','/cleaner_2/scan'),
+                        ('/odom','/cleaner_2/odom'),
+                        ('/tf','/cleaner_2/tf')],
         ),
     ]) 
