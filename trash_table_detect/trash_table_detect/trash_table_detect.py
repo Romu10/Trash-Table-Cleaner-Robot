@@ -101,7 +101,7 @@ class TrashTableDetection(Node):
         self.y_coordinates = np.multiply(self.laser_data, np.sin(angles))
 
         # merge data
-        data_with_inf = np.column_stack((-self.y_coordinates, self.x_coordinates))
+        data_with_inf = np.column_stack((self.y_coordinates, self.x_coordinates))
         # filter finite values
         finite_indices = np.isfinite(data_with_inf).all(axis=1)
         self.data = data_with_inf[finite_indices]
@@ -179,18 +179,18 @@ class TrashTableDetection(Node):
             self.approach_path = self.create_approach_path(approach_point=self.approach_point, leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, display=False)
 
             # Publish Table Legs Transform
-            #self.publish_table_transform(frame='leg_1', x_coordinate=sorted_table_legs_with_distance[0,0], y_coordinate=sorted_table_legs_with_distance[0,1])
-            #self.publish_table_transform(frame='leg_2', x_coordinate=sorted_table_legs_with_distance[1,0], y_coordinate=sorted_table_legs_with_distance[1,1])
-            #self.publish_table_transform(frame='leg_3', x_coordinate=sorted_table_legs_with_distance[2,0], y_coordinate=sorted_table_legs_with_distance[2,1])
-            #self.publish_table_transform(frame='leg_4', x_coordinate=sorted_table_legs_with_distance[3,0], y_coordinate=sorted_table_legs_with_distance[3,1])
+            self.publish_table_transform(frame='leg_1', source_frame='cleaner_2/laser_sensor_link', x_coordinate=sorted_table_legs_with_distance[0,0], y_coordinate=sorted_table_legs_with_distance[0,1])
+            self.publish_table_transform(frame='leg_2', source_frame='cleaner_2/laser_sensor_link', x_coordinate=sorted_table_legs_with_distance[1,0], y_coordinate=sorted_table_legs_with_distance[1,1])
+            self.publish_table_transform(frame='leg_3', source_frame='cleaner_2/laser_sensor_link', x_coordinate=sorted_table_legs_with_distance[2,0], y_coordinate=sorted_table_legs_with_distance[2,1])
+            self.publish_table_transform(frame='leg_4', source_frame='cleaner_2/laser_sensor_link', x_coordinate=sorted_table_legs_with_distance[3,0], y_coordinate=sorted_table_legs_with_distance[3,1])
 
             # Publish Table Approach Path
-            #self.publish_table_transform(frame='table_center', x_coordinate=self.table_center_point[0], y_coordinate=self.table_center_point[1])
-            #self.publish_table_transform(frame='table_middle', x_coordinate=self.leg_middle_point[0], y_coordinate=self.leg_middle_point[1])
-            #self.publish_table_transform(frame='approach_distance', x_coordinate=self.approach_point[0], y_coordinate=self.approach_point[1])
+            self.publish_table_transform(frame='table_center', source_frame='cleaner_2/laser_sensor_link', x_coordinate=self.table_center_point[0], y_coordinate=self.table_center_point[1])
+            self.publish_table_transform(frame='table_middle', source_frame='cleaner_2/laser_sensor_link', x_coordinate=self.leg_middle_point[0], y_coordinate=self.leg_middle_point[1])
+            self.publish_table_transform(frame='approach_distance', source_frame='cleaner_2/laser_sensor_link', x_coordinate=self.approach_point[0], y_coordinate=self.approach_point[1])
 
             # plot graph to visualize data
-            self.plot_data()
+            # self.plot_data()
 
             # inform table found 
             print('Trash Table Detected')
@@ -525,10 +525,10 @@ class TrashTableDetection(Node):
             print('Approach Path:\n', approach_path)
         return approach_path
 
-    def publish_table_transform(self, frame, x_coordinate, y_coordinate):
+    def publish_table_transform(self, frame, source_frame, x_coordinate, y_coordinate):
         tf_msg = TransformStamped()
         tf_msg.header.stamp = self.get_clock().now().to_msg()
-        tf_msg.header.frame_id = 'robot_front_laser_base_link'
+        tf_msg.header.frame_id = source_frame
         tf_msg.child_frame_id = frame
         tf_msg.transform.translation.y = x_coordinate
         tf_msg.transform.translation.x = y_coordinate
