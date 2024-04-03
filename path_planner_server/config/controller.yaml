@@ -76,7 +76,7 @@ local_costmap:
       update_frequency: 5.0
       publish_frequency: 2.0
       global_frame: cleaner_2/odom
-      robot_base_frame: cleaner_2/base_link
+      robot_base_frame: base_link
       use_sim_time: False
       rolling_window: true
       width: 2

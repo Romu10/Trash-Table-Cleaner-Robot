@@ -57,7 +57,7 @@ def generate_launch_description():
             executable='controller_server',
             name='controller_server',
             output='screen',
-            remappings=[('/cmd_vel', 'cleaner_2/odom')],
+            remappings=[('/cmd_vel', 'cleaner_2/cmd_vel')],
             parameters=[controller_yaml]),
 
         Node(
@@ -71,7 +71,7 @@ def generate_launch_description():
             package='nav2_behaviors',
             executable='behavior_server',
             name='behavior_server',
-            remappings=[('/cmd_vel', 'cleaner_2/odom')],
+            remappings=[('/cmd_vel', 'cleaner_2/cmd_vel')],
             parameters=[recovery_yaml],
             output='screen'),
 
