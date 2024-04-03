@@ -16,10 +16,13 @@ def generate_launch_description():
             name='map_server',
             output='screen',
             parameters=[{'use_sim_time': False}, 
-                        {'yaml_filename':map_file}]
+                        {'yaml_filename':map_file},
+                        {'topic_name':"map"},
+                        {'frame_id':"map"}]
         ),
             
         Node(
+            namespace='cleaner_2',
             package='nav2_amcl',
             executable='amcl',
             name='amcl',
@@ -34,6 +37,7 @@ def generate_launch_description():
             output='screen',
             parameters=[{'use_sim_time': False},
                         {'autostart': True},
-                        {'node_names': ['map_server', 'amcl']}]
+                        {'bond_timeout':0.0},
+                        {'node_names': ['map_server', 'cleaner_2/amcl']}]
         )
     ])
