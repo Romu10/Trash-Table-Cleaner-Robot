@@ -5,7 +5,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
 
-    map_file = os.path.join(get_package_share_directory('map_server'), 'maps', 'rb1_cafeteria_sim_map.yaml')
+    map_file = os.path.join(get_package_share_directory('map_server'), 'maps', 'real_cafeteria_map.yaml')
     nav2_yaml = os.path.join(get_package_share_directory('localization_server'), 'config', 'amcl_config.yaml')
     controller_yaml = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'controller.yaml')
     bt_navigator_yaml = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'bt_navigator.yaml')
@@ -17,14 +17,14 @@ def generate_launch_description():
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
-            arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'robot_base_link'],
+            arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'cleaner_2/base_link'],
             output='screen',
         ),
 
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
-            arguments=['0', '0', '0', '0', '0', '0', 'robot_base_footprint', 'base_link'],
+            arguments=['0', '0', '0', '0', '0', '0', 'cleaner_2/base_footprint', 'base_link'],
             output='screen',
         ),
 
@@ -34,14 +34,14 @@ def generate_launch_description():
             name='rviz2',
             output='screen',
             arguments=['-d', '/home/user/ros2_ws/src/path_planner_server/rviz2/pathplanner_rviz_config.rviz'],
-            parameters=[{'use_sim_time': True}]),
+            parameters=[{'use_sim_time': False}]),
 
         Node(
             package='nav2_map_server',
             executable='map_server',
             name='map_server',
             output='screen',
-            parameters=[{'use_sim_time': True}, 
+            parameters=[{'use_sim_time': False}, 
                         {'yaml_filename':map_file}]),
         
         Node(
@@ -57,7 +57,7 @@ def generate_launch_description():
             executable='controller_server',
             name='controller_server',
             output='screen',
-            remappings=[('/cmd_vel', '/diffbot_base_controller/cmd_vel_unstamped')],
+            remappings=[('/cmd_vel', 'cleaner_2/odom')],
             parameters=[controller_yaml]),
 
         Node(
@@ -71,7 +71,7 @@ def generate_launch_description():
             package='nav2_behaviors',
             executable='behavior_server',
             name='behavior_server',
-            remappings=[('/cmd_vel', '/diffbot_base_controller/cmd_vel_unstamped')],
+            remappings=[('/cmd_vel', 'cleaner_2/odom')],
             parameters=[recovery_yaml],
             output='screen'),
 
