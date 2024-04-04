@@ -21,23 +21,20 @@ from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 ##################### Trash table positions for picking in Map ##############
 #                     X            Y           Z            W               #            
 table_trash_positions = {                                                   #
-    "position_1": [1.10607,    -0.164404,   0.759042,   0.755167],           #
-    "position_2": [-0.0491602, -0.689815,  -0.999793,   0.0203558],         #
-    "position_3": [-1.46219,   -2.08501,   -0.705164,   0.709044],          #
-    "position_4": [4.25377,    -1.50222,    0.1024681,  0.996594],          #
-    "position_5": [4.92647,     0.19721,    0.691586,   0.722294],          #
-    "position_6": [1.1534,     -2.76343,   -0.694667,   0.719332]}          #
+    "position_1": [-0.7229,     1.9543,    0.6209,   0.7838],          #
+    "position_2": [-1.2813,    -0.5688,   -0.7115,   0.7026],         #
+    "position_3": [ 0.0000,     0.0000,    0.0000,   0.0000]}          #
 #############################################################################                                                                         
 
 ################## Shipping destination for dropoff trash tables ############
 shipping_destinations = {                                                   #              
-    "backroom_1": [7.21814, -2.1297, -0.999085, 0.0427718],                 #
-    "backroom_2": [8.44286, -2.18891, 0.00634964, 0.99998],}                #
+    "backroom_1": [-1.4066, -2.8370,  0.9996,  0.02531],                 #
+    "backroom_2": [ 0.0000,  0.0000,  0.0000,  0.0000],}                #
 #############################################################################
 
 ######################     Robot initial positions     ######################
 robot_init_position = {                                                     #              
-    "start_position": [0.00, 0.00, 0.00, 0.99]}                             #
+    "start_position": [-0.5000, 0.0000, 1.0000, 0.0000]}                  #
 #############################################################################
 
 class Nav2TaskManager(Node):
@@ -173,16 +170,16 @@ class ApproachController(Node):
         self.get_table_pos_tf = self.create_client(TablePosition, 'get_position_tf')
         
         # wait until service gets online
-        while not self.get_table_pos_tf.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Static Transform service not available, waiting again...')
+        #while not self.get_table_pos_tf.wait_for_service(timeout_sec=1.0):
+        #    self.get_logger().info('Static Transform service not available, waiting again...')
 
         # wait until action service gets online
-        while not self.action_client.wait_for_server(timeout_sec=1.0):
-            print('Approach Controller action not available, waiting again...')
+        #while not self.action_client.wait_for_server(timeout_sec=1.0):
+        #    print('Approach Controller action not available, waiting again...')
         
         # wait until service gets online
-        while not self.move_table_back_srv_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Move Table Back service not available, waiting again...')
+        #while not self.move_table_back_srv_client.wait_for_service(timeout_sec=1.0):
+        #    self.get_logger().info('Move Table Back service not available, waiting again...')
         
         # define the variable to send the request
         self.move_table_req = Trigger.Request()
@@ -333,9 +330,9 @@ def main():
     middle_point = Point()
     center_point = Point()
 
-    # Iterate over a sequence from 1 to 6
-    i = 4
-    while i < 6:
+    # Iterate over a sequence from 1 to 3
+    i = 1
+    while i < 3:
         # Define the goal position 
         request_table_location = 'position_' + str(i)
 
@@ -350,6 +347,9 @@ def main():
 
         # Do something if result depending on result status
         if result: 
+            i = i + 1
+            
+            continue
             # wait until robot is complete stop
             time.sleep(5)
             
@@ -423,7 +423,7 @@ def main():
                 navigator.clearAllCostmaps()
                 break
 
-        if not result:
+        else:
             # Define the home goal position 
             robot_home_position = 'start_position'
 

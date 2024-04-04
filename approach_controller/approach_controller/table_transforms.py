@@ -68,10 +68,10 @@ class TableTransformPublisher(Node):
             
             # get the transform position 
             while not self.read:
-                self.leg_1_transform = self.get_transform(target_frame='leg_1', source_frame='robot_base_link')
-                self.center_point_transform = self.get_transform(target_frame='table_center', source_frame='robot_base_link')
-                self.approach_point_transform = self.get_transform(target_frame='approach_distance', source_frame='robot_base_link')
-                self.robot_position = self.get_transform(target_frame='robot_base_link', source_frame='odom')
+                self.leg_1_transform = self.get_transform(target_frame='leg_1', source_frame='cleaner_2/base_link')
+                self.center_point_transform = self.get_transform(target_frame='table_center', source_frame='cleaner_2/base_link')
+                self.approach_point_transform = self.get_transform(target_frame='approach_distance', source_frame='cleaner_2/base_link')
+                self.robot_position = self.get_transform(target_frame='cleaner_2/base_link', source_frame='map')
                 self.odom_map = self.get_transform(target_frame='map', source_frame='odom')
                 if self.leg_1_transform and self.robot_position and self.approach_point_transform and self.robot_position:
                     # indicate that the transfrom is running well
