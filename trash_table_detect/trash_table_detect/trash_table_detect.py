@@ -179,10 +179,10 @@ class TrashTableDetection(Node):
             self.approach_path = self.create_approach_path(approach_point=self.approach_point, leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, display=False)
 
             # Publish Table Legs Transform
-            self.publish_table_transform(frame='leg_1', source_frame='cleaner_2/laser_sensor_link', x_coordinate=sorted_table_legs_with_distance[0,0], y_coordinate=sorted_table_legs_with_distance[0,1])
-            self.publish_table_transform(frame='leg_2', source_frame='cleaner_2/laser_sensor_link', x_coordinate=sorted_table_legs_with_distance[1,0], y_coordinate=sorted_table_legs_with_distance[1,1])
-            self.publish_table_transform(frame='leg_3', source_frame='cleaner_2/laser_sensor_link', x_coordinate=sorted_table_legs_with_distance[2,0], y_coordinate=sorted_table_legs_with_distance[2,1])
-            self.publish_table_transform(frame='leg_4', source_frame='cleaner_2/laser_sensor_link', x_coordinate=sorted_table_legs_with_distance[3,0], y_coordinate=sorted_table_legs_with_distance[3,1])
+            #self.publish_table_transform(frame='leg_1', source_frame='cleaner_2/laser_sensor_link', x_coordinate=sorted_table_legs_with_distance[0,0], y_coordinate=sorted_table_legs_with_distance[0,1])
+            #self.publish_table_transform(frame='leg_2', source_frame='cleaner_2/laser_sensor_link', x_coordinate=sorted_table_legs_with_distance[1,0], y_coordinate=sorted_table_legs_with_distance[1,1])
+            #self.publish_table_transform(frame='leg_3', source_frame='cleaner_2/laser_sensor_link', x_coordinate=sorted_table_legs_with_distance[2,0], y_coordinate=sorted_table_legs_with_distance[2,1])
+            #self.publish_table_transform(frame='leg_4', source_frame='cleaner_2/laser_sensor_link', x_coordinate=sorted_table_legs_with_distance[3,0], y_coordinate=sorted_table_legs_with_distance[3,1])
 
             # Publish Table Approach Path
             self.publish_table_transform(frame='table_center', source_frame='cleaner_2/laser_sensor_link', x_coordinate=self.table_center_point[0], y_coordinate=self.table_center_point[1])
@@ -193,15 +193,15 @@ class TrashTableDetection(Node):
             # self.plot_data()
 
             # inform table found 
-            print('Trash Table Detected')
+            #print('Trash Table Detected')
 
             # update service 
             self.found_table = True
 
-        else:
+        #else:
 
             # inform table not found
-            print('Trash Table NOT Detected')
+            #print('Trash Table NOT Detected')
 
     
     def plot_data(self):

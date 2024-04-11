@@ -1,15 +1,23 @@
 import rclpy
 from rclpy.node import Node
 import tf2_ros
-from geometry_msgs.msg import TransformStamped, Point
+from geometry_msgs.msg import TransformStamped, Point, Twist
+from std_msgs.msg import Float32
 from std_srvs.srv import SetBool
 from detection_interfaces.srv import TablePosition
+from nav_msgs.msg import Odometry
 from rclpy.time import Time
 import math
+import time
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import ReentrantCallbackGroup
 
 class TableTransformPublisher(Node):
+
+    # parameters
+    _yaw_precision = 0.03   # +/- 2 degree allowed
+    _dist_precision = 0.05
+
     def __init__(self):
         super().__init__('trash_table_transform_publisher')
 
@@ -18,7 +26,15 @@ class TableTransformPublisher(Node):
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
         # define the service
-        self.srv = self.create_service(TablePosition, 'get_position_tf', self.get_position_from_tf, callback_group=ReentrantCallbackGroup())
+        self.srv = self.create_service(TablePosition, 'get_position_tf', self.get_position_from_tf, 
+                                                        callback_group=ReentrantCallbackGroup())
+
+        # define a subsription for odom
+        self.odom_subscription = self.create_subscription(Odometry, '/cleaner_2/odom', self.odom_callback, 10, 
+                                                            callback_group=ReentrantCallbackGroup())
+
+        # define a publisher for cmd
+        self._pub_cmd_vel = self.create_publisher(Twist, 'cleaner_2/cmd_vel', 10)
 
         # define tf listener 
         self.tf_buffer = tf2_ros.Buffer()
@@ -36,15 +52,10 @@ class TableTransformPublisher(Node):
         self.odom_map = Point()
 
         # save table positions from robot_base_link
-        self.table_leg_1 = Point()
-        self.odom_table_leg_1 = Point()
-        self.map_table_leg_1 = Point()
         self.center_point = Point()
-        self.odom_center_point = Point()
         self.approach_point = Point()
-        self.odom_approach_point = Point()
-        self.map_center_point = Point()
-        self.map_approach_point = Point()
+
+        self._yaw = Float32()
 
         # save variables to compare error 
         self.verify_center_point = Point()
@@ -60,7 +71,7 @@ class TableTransformPublisher(Node):
         self.process = False
 
         # Call on_timer function every second
-        self.timer = self.create_timer(0.01, self.on_timer, callback_group=ReentrantCallbackGroup())
+        self.timer = self.create_timer(0.1, self.on_timer, callback_group=ReentrantCallbackGroup())
         
         self.get_logger().info('Transform Position Service Online...')
     
@@ -70,20 +81,13 @@ class TableTransformPublisher(Node):
             
             # get the transform position 
             while not self.read:
-                self.leg_1_transform = self.get_transform(target_frame='leg_1', source_frame='cleaner_2/base_link')
                 self.center_point_transform = self.get_transform(target_frame='table_center', source_frame='cleaner_2/base_link')
                 self.approach_point_transform = self.get_transform(target_frame='approach_distance', source_frame='cleaner_2/base_link')
-                self.robot_position = self.get_transform(target_frame='cleaner_2/base_link', source_frame='map')
-                #self.odom_map = self.get_transform(target_frame='map', source_frame='odom')
-                if self.leg_1_transform and self.robot_position and self.approach_point_transform and self.robot_position:
+                if self.center_point_transform and self.approach_point_transform:
                     # indicate that the transfrom is running well
                     self.process = True
                     #self.read = True
                     break
-
-            # save table leg_1 position from base_link
-            self.table_leg_1.x = self.leg_1_transform.transform.translation.x
-            self.table_leg_1.y = self.leg_1_transform.transform.translation.y
 
             # save center point position from base_link
             self.center_point.x = self.center_point_transform.transform.translation.x
@@ -93,61 +97,61 @@ class TableTransformPublisher(Node):
             self.approach_point.x = self.approach_point_transform.transform.translation.x 
             self.approach_point.y = self.approach_point_transform.transform.translation.y
 
-            # calculate leg position in the odometry plan 
-            self.map_table_leg_1.x = self.table_leg_1.x + self.robot_position.transform.translation.x
-            self.map_table_leg_1.y = self.table_leg_1.y - self.robot_position.transform.translation.y
-
-            # calculate center position in the odometry plane
-            self.map_center_point.x = self.center_point.x + self.robot_position.transform.translation.x
-            self.map_center_point.y = self.center_point.y - self.robot_position.transform.translation.y
-
-            # calculate approach positin in the odometry plane 
-            self.map_approach_point.x = self.approach_point.x + self.robot_position.transform.translation.x
-            self.map_approach_point.y = self.approach_point.y - self.robot_position.transform.translation.y
-
-            # calcula yaw error between odom and map
-            # rotation = self.odom_map.transform.rotation
-            # yaw = self.calculate_yaw(q_x=rotation.x, q_y=rotation.y, q_z=rotation.z, q_w=rotation.w)
-            # yaw = math.degrees(yaw)
-
-            # extract odom to map pos offset
-            #offset_x = self.odom_map.transform.translation.x
-            #offset_y = self.odom_map.transform.translation.y
-
-            # rotate in odom to the yaw the frame is rotate
-            #fixed_table_x, fixed_table_y = self.rotate_point(x=self.odom_table_leg_1.x, y=self.odom_table_leg_1.y, yaw=yaw)
-            #fixed_center_x, fixed_center_y = self.rotate_point(x=self.odom_center_point.x, y=self.odom_center_point.y, yaw=yaw)
-            #fixed_approach_x, fixed_approach_y = self.rotate_point(x=self.odom_approach_point.x, y=self.odom_approach_point.y, yaw=yaw)
+            # calculate orientation (positive right | negative left)
+            yaw_1 = math.atan2(self.approach_point.y - 0, self.approach_point.x - 0) 
             
+            # aling table point orientation with robot odom
+            if yaw_1 < 0:
+                yaw_2 = yaw_1 + math.pi
+            else: 
+                yaw_2 = yaw_1 - math.pi
             
-            # publish first leg  transform
-            self.publish_table_transform(frame='table_leg_1',
-                                        source_frame='map',
-                                        y_coordinate= self.map_table_leg_1.y,
-                                        x_coordinate= self.map_table_leg_1.x)
+            # calculate tf yaw respect the robot
+            yaw = self._yaw.data + yaw_2
+
+            # calculte error yaw
+            err_yaw = math.fabs(yaw) - math.fabs(self._yaw.data)
+ 
+            # print the orientation     
+            self.get_logger().info("Pre TF Yaw: %f" % yaw_1)
+            self.get_logger().info("Post TF Yaw: %f" % yaw_2)
+            self.get_logger().info("Robot TF Yaw: %f" % yaw)
+            self.get_logger().info("Robot Yaw: %f" % self._yaw.data)
+            self.get_logger().info("Error Yaw: %f" % err_yaw)
+
+            # calculate the forward distance needed
+            self.get_logger().info("X : %f" % self.approach_point.x)
+            self.get_logger().info("Y : %f" % self.approach_point.y)
+            needed_dist = math.sqrt(pow(self.approach_point.y - 0, 2) + pow(self.approach_point.x - 0, 2))
+            self.get_logger().info("Distance: %f" % needed_dist)
             
-            # publish first leg  transform
-            self.publish_table_transform(frame='table_center_point',
-                                        source_frame='map',
-                                        y_coordinate= self.map_center_point.y,
-                                        x_coordinate= self.map_center_point.x)
+  
+            # confirm the distance
+            if needed_dist < self._dist_precision:
+                self.read = True
+                self.start_broadcasting = False
 
-            # publish first leg  transform
-            self.publish_table_transform(frame='table_approach_point',
-                                        source_frame='map',
-                                        y_coordinate= self.map_approach_point.y,
-                                        x_coordinate= self.map_approach_point.x)
+            if math.fabs(err_yaw) > self._yaw_precision:
+                twist_msg = Twist()
+                twist_msg.angular.z = 0.0087
+                twist_msg.angular.z = -0.0087 if err_yaw > 0 else 0.0087
+                self._pub_cmd_vel.publish(twist_msg)
+                self.get_logger().info("Need Yaw")
 
-            self.get_logger().info("Leg X : %f" % self.map_table_leg_1.x)
-            self.get_logger().info("Leg Y : %f" % self.map_table_leg_1.y)
-            # self.get_logger().info("Odom Yaw Offset: %f" % yaw)
 
+            else:
+                twist_msg = Twist()
+                twist_msg.linear.x = 0.0235
+                self._pub_cmd_vel.publish(twist_msg)
+                self.get_logger().info("Need Distance")
+            
             # indicate process is running
             
             # end cycle
             # self.start_broadcasting = False
 
-            self.get_logger().warning('Got Transform')
+            self.get_logger().warning('Going to Transform')
+            time.sleep(0.2)
 
 
     def get_transform(self, target_frame, source_frame):
@@ -210,9 +214,25 @@ class TableTransformPublisher(Node):
             yaw -= 2 * math.pi
         elif yaw < -math.pi:
             yaw += 2 * math.pi
-        
         return yaw
     
+    def odom_callback(self, msg):
+        
+        # get robots positions
+        self._position = msg.pose.pose.position
+        
+        # get robots orientation in terms of quaternions
+        q_x = msg.pose.pose.orientation.x
+        q_y = msg.pose.pose.orientation.y
+        q_z = msg.pose.pose.orientation.z
+        q_w = msg.pose.pose.orientation.w
+
+        # Calculate robot yaw in degree
+        self._yaw.data = self.calculate_yaw(q_x=q_x, q_y=q_y, q_z=q_z, q_w=q_w)
+        #self.get_logger().info("Direct Odometry Yaw: %f" % self._yaw.data)
+
+        
+
     def rotate_point(self, x, y, yaw):
         theta = math.radians(yaw)        
         x_prime = x * math.cos(theta) - y * math.sin(theta)
