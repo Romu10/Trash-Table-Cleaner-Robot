@@ -30,10 +30,6 @@ class TableTransformPublisher(Node):
         self.srv = self.create_service(TablePosition, 'get_position_tf', self.get_position_from_tf, 
                                                         callback_group=ReentrantCallbackGroup())
 
-        # define a subsription for odom
-        self.odom_subscription = self.create_subscription(Odometry, '/cleaner_2/odom', self.odom_callback, 10, 
-                                                            callback_group=ReentrantCallbackGroup())
-
         # define a publisher for cmd
         self._pub_cmd_vel = self.create_publisher(Twist, 'cleaner_2/cmd_vel', 10)
 
@@ -56,17 +52,10 @@ class TableTransformPublisher(Node):
         self.center_point = Point()
         self.approach_point = Point()
 
-        self._yaw = Float32()
         self.robot_tf_yaw = 0.00
-
-        # save variables to compare error 
-        self.verify_center_point = Point()
 
         # create flag for start broadcasting tfs 
         self.start_broadcasting = False
-
-        # create flag to indicate that the error is small enought
-        self.small_error = False
 
         # create flag to read transforms once
         self.read = False
@@ -78,17 +67,6 @@ class TableTransformPublisher(Node):
         self.success_aprch = False
         self.needed_dist_apr = 1.0
         self.needed_dist_ctp = 1.0
-        self.final_yaw = 0.0
-        self.final_distance = 0.0
-
-        # Angular Vel PID Control params
-        kp_ang = 0.5  # proportional gain
-        ki_ang = 0.0001  # integral gain
-        kd_ang = 0.2  # derivative gain 
-        min_output_ang = -0.0057  # min output value for vel 
-        max_output_ang = 0.0057  # max output value for vel
-
-        self.pid_controller_ang = PIDController(kp_ang, ki_ang, kd_ang, min_output_ang, max_output_ang)
 
         # Call on_timer function every second
         self.timer = self.create_timer(0.05, self.on_timer, callback_group=ReentrantCallbackGroup())
@@ -156,18 +134,13 @@ class TableTransformPublisher(Node):
                 self.success_aprch = True
 
             if math.fabs(err_yaw) > self._yaw_precision:
-                #rot_vel = self.pid_controller_ang.calculate(err_yaw, dt)
                 twist_msg = Twist()
                 twist_msg.angular.z = 0.0050 if err_yaw > 0 else -0.0050
-                #twist_msg.angular.z = rot_vel
                 self._pub_cmd_vel.publish(twist_msg)
                 self.get_logger().info("Need Yaw")
-                #self.get_logger().info("PID: %f" % rot_vel)
             else:
-                #rot_vel = self.pid_controller_ang.calculate(err_yaw, dt)
                 twist_msg = Twist()
                 twist_msg.linear.x = 0.0235
-                #twist_msg.angular.z = -rot_vel
                 self._pub_cmd_vel.publish(twist_msg)
                 self.get_logger().info("Need Distance")
 
@@ -256,20 +229,6 @@ class TableTransformPublisher(Node):
 
         return response
 
-    def publish_table_transform(self, frame, source_frame, x_coordinate, y_coordinate):
-        tf_msg = TransformStamped()
-        tf_msg.header.stamp = self.get_clock().now().to_msg()
-        tf_msg.header.frame_id = source_frame
-        tf_msg.child_frame_id = frame
-        tf_msg.transform.translation.y = x_coordinate
-        tf_msg.transform.translation.x = y_coordinate
-        tf_msg.transform.translation.z = 0.0
-        tf_msg.transform.rotation.x = 0.0
-        tf_msg.transform.rotation.y = 0.0
-        tf_msg.transform.rotation.z = 0.0
-        tf_msg.transform.rotation.w = 1.0
-        self.tf_broadcaster.sendTransform(tf_msg)
-
     def calculate_yaw(self, q_x, q_y, q_z, q_w):
         # Calcular ángulo de yaw
         yaw = math.atan2(2 * (q_w * q_z + q_x * q_y), 1 - 2 * (q_y**2 + q_z**2))
@@ -280,54 +239,6 @@ class TableTransformPublisher(Node):
         elif yaw < -math.pi:
             yaw += 2 * math.pi
         return yaw
-    
-    def odom_callback(self, msg):
-        
-        # get robots positions
-        self._position = msg.pose.pose.position
-        
-        # get robots orientation in terms of quaternions
-        q_x = msg.pose.pose.orientation.x
-        q_y = msg.pose.pose.orientation.y
-        q_z = msg.pose.pose.orientation.z
-        q_w = msg.pose.pose.orientation.w
-
-        # Calculate robot yaw in degree
-        self._yaw.data = self.calculate_yaw(q_x=q_x, q_y=q_y, q_z=q_z, q_w=q_w)
-        #self.get_logger().info("Direct Odometry Yaw: %f" % self._yaw.data)
-
-class PIDController:
-    def __init__(self, kp, ki, kd, min_output, max_output):
-        self.kp = kp  # Constante proporcional
-        self.ki = ki  # Constante integral
-        self.kd = kd  # Constante derivativa
-        self.min_output = min_output  # Valor mínimo de salida
-        self.max_output = max_output  # Valor máximo de salida
-        self.prev_error = 0.0  # Error previo
-        self.integral = 0.0  # Término integral
-
-    def calculate(self, error, dt):
-        # Término proporcional
-        proportional = self.kp * error
-
-        # Término integral
-        self.integral += error * dt
-        integral = self.ki * self.integral
-
-        # Término derivativo
-        derivative = self.kd * (error - self.prev_error) / dt
-
-        # Actualizar el error previo
-        self.prev_error = error
-
-        # Calcular la salida del control PID
-        output = proportional + integral + derivative
-
-        # Limitar la salida dentro del rango permitido
-        output = max(min(output, self.max_output), self.min_output)
-
-        return output
-
 
 def main(args=None):
     rclpy.init(args=args)
