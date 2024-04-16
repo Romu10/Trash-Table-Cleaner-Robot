@@ -140,7 +140,7 @@ class TrashTableDetection(Node):
         self.selected_points_with_distances_sorted_filtered(self.sorted_matrix_with_coord_dist, column=4, max_value=distances_average, display=False)
 
         # eliminate points that are more far than the specified values (filter)
-        self.filter_coordinates(max_legs_distance=0.85, min_leg_distance=0.35, display=False)
+        self.filter_coordinates(max_legs_distance=0.65, min_leg_distance=0.48, display=False)
 
         # eliminate points that are too close and get the result
         self.legs_coordinates_with_no_reps = self.verify_close_points(self.array_final, threshold=0.3, display=False)
@@ -149,7 +149,7 @@ class TrashTableDetection(Node):
         self.leg_distances = self.calculate_distance_to_zero(coordinates=self.legs_coordinates_with_no_reps, name_of_coordinates= 'Table Leg Distances', display=False)
         
         # permutate and search for the exactly combination of square sides and diagonals
-        self.table_square = self.find_square(points=self.legs_coordinates_with_no_reps, max_legs_side_distance=0.80, min_leg_side_distance=0.40, max_diagonal_distance=0.70, min_diagonal_distance=0.40)
+        self.table_square = self.find_square(points=self.legs_coordinates_with_no_reps, max_legs_side_distance=0.90, min_leg_side_distance=0.30, max_diagonal_distance=0.90, min_diagonal_distance=0.30)
 
         if len(self.table_square) > 0:
             # print('Square Coordinates Posible:', len(self.table_square))
@@ -174,7 +174,7 @@ class TrashTableDetection(Node):
             # calculate all the points required for define an underneath the table path
             self.leg_middle_point = self.calculate_front_legs_center_point(leg_coordinates=sorted_table_legs_with_distance, display=False)
             self.table_center_point = self.calculate_table_center_point(leg_coordinates=sorted_table_legs_with_distance, display=False)
-            self.approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.50, display=False)
+            self.approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.40, display=False)
             self.pre_approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.25, display=False)
             self.approach_path = self.create_approach_path(approach_point=self.approach_point, leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, display=False)
 

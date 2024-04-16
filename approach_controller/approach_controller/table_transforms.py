@@ -16,7 +16,8 @@ class TableTransformPublisher(Node):
 
     # parameters
     _yaw_precision = 0.03   # +/- 2 degree allowed
-    _dist_precision = 0.05
+    _dist_precision = 0.15
+    _dist_from_ctp = 0.07
 
     def __init__(self):
         super().__init__('trash_table_transform_publisher')
@@ -56,6 +57,7 @@ class TableTransformPublisher(Node):
         self.approach_point = Point()
 
         self._yaw = Float32()
+        self.robot_tf_yaw = 0.00
 
         # save variables to compare error 
         self.verify_center_point = Point()
@@ -70,23 +72,56 @@ class TableTransformPublisher(Node):
         self.read = False
         self.process = False
 
+        # 
+        self.success_tf_apr = False
+        self.success_tf_ctp = False
+        self.success_aprch = False
+        self.needed_dist_apr = 1.0
+        self.needed_dist_ctp = 1.0
+        self.final_yaw = 0.0
+        self.final_distance = 0.0
+
+        # Angular Vel PID Control params
+        kp_ang = 0.5  # proportional gain
+        ki_ang = 0.0001  # integral gain
+        kd_ang = 0.2  # derivative gain 
+        min_output_ang = -0.0057  # min output value for vel 
+        max_output_ang = 0.0057  # max output value for vel
+
+        self.pid_controller_ang = PIDController(kp_ang, ki_ang, kd_ang, min_output_ang, max_output_ang)
+
         # Call on_timer function every second
-        self.timer = self.create_timer(0.1, self.on_timer, callback_group=ReentrantCallbackGroup())
+        self.timer = self.create_timer(0.05, self.on_timer, callback_group=ReentrantCallbackGroup())
         
         self.get_logger().info('Transform Position Service Online...')
     
     def on_timer(self):
 
         if self.start_broadcasting:
+
+            prev_time = None
+            elapsed_time = 0
+            start_time = time.time()
+
+            # keep calculating the robot orientation everytime
+            self.robot_position = self.get_transform(target_frame='map', source_frame='base_link')
+
+            # calculate robot orientation
+            self.robot_tf_yaw = self.calculate_yaw( q_x= self.robot_position.transform.rotation.x,
+                                                    q_y= self.robot_position.transform.rotation.y, 
+                                                    q_z= self.robot_position.transform.rotation.z,
+                                                    q_w= self.robot_position.transform.rotation.w)
+            self.get_logger().info("Robot Yaw From Map: %f" % self.robot_tf_yaw)
             
             # get the transform position 
             while not self.read:
-                self.center_point_transform = self.get_transform(target_frame='table_center', source_frame='cleaner_2/base_link')
-                self.approach_point_transform = self.get_transform(target_frame='approach_distance', source_frame='cleaner_2/base_link')
+                self.center_point_transform = self.get_transform(target_frame='map', source_frame='table_center')
+                self.approach_point_transform = self.get_transform(target_frame='map', source_frame='approach_distance')
+                time.sleep(0.1)
                 if self.center_point_transform and self.approach_point_transform:
                     # indicate that the transfrom is running well
                     self.process = True
-                    #self.read = True
+                    self.read = False
                     break
 
             # save center point position from base_link
@@ -97,61 +132,90 @@ class TableTransformPublisher(Node):
             self.approach_point.x = self.approach_point_transform.transform.translation.x 
             self.approach_point.y = self.approach_point_transform.transform.translation.y
 
-            # calculate orientation (positive right | negative left)
-            yaw_1 = math.atan2(self.approach_point.y - 0, self.approach_point.x - 0) 
-            
-            # aling table point orientation with robot odom
-            if yaw_1 < 0:
-                yaw_2 = yaw_1 + math.pi
-            else: 
-                yaw_2 = yaw_1 - math.pi
-            
-            # calculate tf yaw respect the robot
-            yaw = self._yaw.data + yaw_2
+            # Calculate control commands using PID
+            if prev_time is not None:  
+                dt = elapsed_time - prev_time
+            else:
+                dt = 0.000001
 
-            # calculte error yaw
-            err_yaw = math.fabs(yaw) - math.fabs(self._yaw.data)
- 
-            # print the orientation     
-            self.get_logger().info("Pre TF Yaw: %f" % yaw_1)
-            self.get_logger().info("Post TF Yaw: %f" % yaw_2)
-            self.get_logger().info("Robot TF Yaw: %f" % yaw)
-            self.get_logger().info("Robot Yaw: %f" % self._yaw.data)
-            self.get_logger().info("Error Yaw: %f" % err_yaw)
+            # operate the approach
+            if not self.success_tf_apr: 
+                self.needed_dist_apr, err_yaw, self.success_tf_apr = self.approach_proccess(point_x= self.approach_point.x, 
+                                                                                            point_y= self.approach_point.y, 
+                                                                                            precision= self._dist_precision,
+                                                                                            position= "Approach Point")
 
-            # calculate the forward distance needed
-            self.get_logger().info("X : %f" % self.approach_point.x)
-            self.get_logger().info("Y : %f" % self.approach_point.y)
-            needed_dist = math.sqrt(pow(self.approach_point.y - 0, 2) + pow(self.approach_point.x - 0, 2))
-            self.get_logger().info("Distance: %f" % needed_dist)
+            if self.success_tf_apr and self.center_point_transform and not self.success_tf_ctp: 
+                self.needed_dist_ctp, err_yaw, self.success_tf_ctp = self.approach_proccess(point_x= self.center_point.x, 
+                                                                                            point_y= self.center_point.y, 
+                                                                                            precision= self._dist_from_ctp,
+                                                                                            position= "Center Point")
             
-  
-            # confirm the distance
-            if needed_dist < self._dist_precision:
-                self.read = True
-                self.start_broadcasting = False
+            if self.success_tf_apr and self.success_tf_ctp:
+                self.get_logger().warning("Goal Reached GOOD")
+                self.success_aprch = True
 
             if math.fabs(err_yaw) > self._yaw_precision:
+                #rot_vel = self.pid_controller_ang.calculate(err_yaw, dt)
                 twist_msg = Twist()
-                twist_msg.angular.z = 0.0087
-                twist_msg.angular.z = -0.0087 if err_yaw > 0 else 0.0087
+                twist_msg.angular.z = 0.0050 if err_yaw > 0 else -0.0050
+                #twist_msg.angular.z = rot_vel
                 self._pub_cmd_vel.publish(twist_msg)
                 self.get_logger().info("Need Yaw")
-
-
+                #self.get_logger().info("PID: %f" % rot_vel)
             else:
+                #rot_vel = self.pid_controller_ang.calculate(err_yaw, dt)
                 twist_msg = Twist()
                 twist_msg.linear.x = 0.0235
+                #twist_msg.angular.z = -rot_vel
                 self._pub_cmd_vel.publish(twist_msg)
                 self.get_logger().info("Need Distance")
-            
-            # indicate process is running
-            
-            # end cycle
-            # self.start_broadcasting = False
+
+            if self.success_aprch: 
+                self.read = True
+                self.start_broadcasting = False
+                self.get_logger().warning('OPERATION SUCCESS')
+
+            # Update elapsed time and previous time
+            prev_time = elapsed_time
+            elapsed_time = time.time() - start_time
 
             self.get_logger().warning('Going to Transform')
-            time.sleep(0.2)
+            time.sleep(0.2)  
+
+    def approach_proccess(self, point_x, point_y, precision, position):
+        
+        # calculate orientation (positive right | negative left)
+        yaw_1 = math.atan2(point_y - self.robot_position.transform.translation.y, point_x - self.robot_position.transform.translation.x) 
+
+        # calculte error yaw
+        err_yaw = yaw_1 - self.robot_tf_yaw
+
+        # indicate position
+        self.get_logger().info(position)
+
+        # print the orientation     
+        self.get_logger().info("TF Yaw: %f" % yaw_1)
+        self.get_logger().info("Robot Yaw: %f" % self.robot_tf_yaw)
+        self.get_logger().info("Error Yaw: %f" % err_yaw)
+
+        # calculate the forward distance needed
+        self.get_logger().info("TF X : %f" % point_x)
+        self.get_logger().info("TF : %f" % point_y)
+        needed_dist = math.sqrt(pow(point_y - self.robot_position.transform.translation.y, 2) + pow(point_x - self.robot_position.transform.translation.x, 2))
+        self.get_logger().info("Distance: %f" % needed_dist)
+
+        if needed_dist < precision:
+            success = True
+            self.get_logger().info("Distances Reached")
+            time.sleep(1)
+        else:
+            success = False
+
+        if position == "Center Point" and needed_dist < 0.50:
+            self.read = True
+            
+        return needed_dist, err_yaw, success
 
 
     def get_transform(self, target_frame, source_frame):
@@ -178,6 +242,7 @@ class TableTransformPublisher(Node):
 
         while not self.process:
             self.get_logger().warning('Waiting')
+            time.sleep(0.1)
 
         # return the result of the error
         response.success = self.process
@@ -231,13 +296,38 @@ class TableTransformPublisher(Node):
         self._yaw.data = self.calculate_yaw(q_x=q_x, q_y=q_y, q_z=q_z, q_w=q_w)
         #self.get_logger().info("Direct Odometry Yaw: %f" % self._yaw.data)
 
-        
+class PIDController:
+    def __init__(self, kp, ki, kd, min_output, max_output):
+        self.kp = kp  # Constante proporcional
+        self.ki = ki  # Constante integral
+        self.kd = kd  # Constante derivativa
+        self.min_output = min_output  # Valor mínimo de salida
+        self.max_output = max_output  # Valor máximo de salida
+        self.prev_error = 0.0  # Error previo
+        self.integral = 0.0  # Término integral
 
-    def rotate_point(self, x, y, yaw):
-        theta = math.radians(yaw)        
-        x_prime = x * math.cos(theta) - y * math.sin(theta)
-        y_prime = x * math.sin(theta) + y * math.cos(theta)
-        return x_prime, y_prime
+    def calculate(self, error, dt):
+        # Término proporcional
+        proportional = self.kp * error
+
+        # Término integral
+        self.integral += error * dt
+        integral = self.ki * self.integral
+
+        # Término derivativo
+        derivative = self.kd * (error - self.prev_error) / dt
+
+        # Actualizar el error previo
+        self.prev_error = error
+
+        # Calcular la salida del control PID
+        output = proportional + integral + derivative
+
+        # Limitar la salida dentro del rango permitido
+        output = max(min(output, self.max_output), self.min_output)
+
+        return output
+
 
 def main(args=None):
     rclpy.init(args=args)
