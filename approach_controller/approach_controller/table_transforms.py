@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 import tf2_ros
 from geometry_msgs.msg import TransformStamped, Point, Twist
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, String
 from std_srvs.srv import SetBool
 from detection_interfaces.srv import TablePosition
 from nav_msgs.msg import Odometry
@@ -32,6 +32,9 @@ class TableTransformPublisher(Node):
 
         # define a publisher for cmd
         self._pub_cmd_vel = self.create_publisher(Twist, 'cleaner_2/cmd_vel', 10)
+
+        # define a publisher for the elevator
+        self._pub_elevator = self.create_publisher(String, 'set_elevator', 10)
 
         # define tf listener 
         self.tf_buffer = tf2_ros.Buffer()
@@ -72,6 +75,13 @@ class TableTransformPublisher(Node):
         # Call on_timer function every second
         self.timer = self.create_timer(0.05, self.on_timer, callback_group=ReentrantCallbackGroup())
         
+        # Make sure the elevator start down
+        cmd_elevator = String()
+        cmd_elevator.data = 'down'
+        self._pub_elevator.publish(cmd_elevator)
+        self.get_logger().warning('Elevator Down')
+        time.sleep(5)
+
         self.get_logger().info('Transform Position Service Online...')
     
     def on_timer(self):
@@ -145,13 +155,24 @@ class TableTransformPublisher(Node):
 
             if self.success_aprch: 
                 self.read = True
-                self.start_broadcasting = False
-                self.process = True
+                
+                # make sure the robot completly stopped
                 twist_msg = Twist()
                 twist_msg.linear.x = 0.00
                 twist_msg.angular.z = 0.00
                 self._pub_cmd_vel.publish(twist_msg)
+                
+                # Once the robot is in position lift the table
+                cmd_elevator = String()
+                cmd_elevator.data = 'up'
+                self._pub_elevator.publish(cmd_elevator)
+                self.get_logger().warning('Elevator Down')
+                time.sleep(5)
                 self.get_logger().warning('OPERATION SUCCESS')
+
+                # End the service
+                self.start_broadcasting = False
+                self.process = True
 
 
             # Update elapsed time and previous time
