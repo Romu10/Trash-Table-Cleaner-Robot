@@ -13,11 +13,11 @@ class MoveTableBack(Node):
         super().__init__('approach_controller')
 
         # define a subsription for odom
-        self.odom_subscription = self.create_subscription(Odometry, '/diffbot_base_controller/odom', self.odom_callback, 10, 
+        self.odom_subscription = self.create_subscription(Odometry, 'cleaner_2/odom', self.odom_callback, 10, 
                                             callback_group=ReentrantCallbackGroup())
 
         # define a publisher for cmd
-        self._pub_cmd_vel = self.create_publisher(Twist, 'diffbot_base_controller/cmd_vel_unstamped', 10)
+        self._pub_cmd_vel = self.create_publisher(Twist, 'cleaner_2/cmd_vel', 10)
 
         # define the service
         self.srv = self.create_service(Trigger, 'move_table_back_srv', self.move_table)
@@ -28,10 +28,10 @@ class MoveTableBack(Node):
         twist_msg = Twist()
         start_time = time.time()
         elapsed_time = 0.0
-        while elapsed_time < 13:
+        while elapsed_time < 15:
             elapsed_time = time.time() - start_time
-            twist_msg.linear.x = -0.20
-            twist_msg.angular.z = -0.01
+            twist_msg.linear.x = -0.05
+            twist_msg.angular.z = -0.00
             self._pub_cmd_vel.publish(twist_msg)
         response.success = True
         response.message = 'Ready'

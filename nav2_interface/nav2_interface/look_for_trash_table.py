@@ -22,7 +22,7 @@ from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 #                     X            Y           Z            W               #            
 table_trash_positions = {                                                   #
     "position_1": [-0.7229,     1.9543,    0.6209,   0.7838],          #
-    "position_2": [-1.2813,    -0.5688,   -0.7115,   0.7026],         #
+    "position_2": [-1.1961,    -0.1500,   -0.7049,   0.7092],         #
     "position_3": [ 0.0000,     0.0000,    0.0000,   0.0000]}          #
 #############################################################################                                                                         
 
@@ -34,19 +34,13 @@ shipping_destinations = {                                                   #
 
 ######################     Robot initial positions     ######################
 robot_init_position = {                                                     #              
-    "start_position": [-0.5000, 0.0000, 1.0000, 0.0000]}                  #
+    "start_position": [-0.5557, -0.0616, 0.9900, 0.0010]}                  #
 #############################################################################
 
 class Nav2TaskManager(Node):
 
     def __init__(self):
         super().__init__('nav2_task_manager')
-
-        # create a topic publisher for call the robots elevator up
-        self.lift_table_pub = self.create_publisher(String,'elevator_up', 10)
-
-        # create a topic publisher for call the robots elevator down
-        self.drop_table_pub = self.create_publisher(String,'elevator_down', 10)
 
         # create a service client
         self.detect_table_srv_client = self.create_client(DetectTableLegs, 'find_table_srv')
@@ -85,16 +79,6 @@ class Nav2TaskManager(Node):
 
         self.global_footprint.publish(polygon_msg)
         self.local_footprint.publish(polygon_msg)
-
-    def lift_table(self):
-        table_up = String()
-        table_up.data = ''
-        self.lift_table_pub.publish(table_up)
-
-    def drop_table(self):
-        table_down = String()
-        table_down.data = '' 
-        self.drop_table_pub.publish(table_down)
 
     def send_detection_request(self):
         future = self.detect_table_srv_client.call_async(self.req)
@@ -160,146 +144,52 @@ class ApproachController(Node):
     def __init__(self):
         super().__init__('approach_controller_client')
 
-        # define the action service
-        self.action_client = ActionClient(self, ApproachTable, 'approach_table_as')
 
         # define a service
         self.move_table_back_srv_client = self.create_client(Trigger, 'move_table_back_srv')
 
         # create a service client
         self.get_table_pos_tf = self.create_client(TablePosition, 'get_position_tf')
-        
-        # wait until service gets online
-        #while not self.get_table_pos_tf.wait_for_service(timeout_sec=1.0):
-        #    self.get_logger().info('Static Transform service not available, waiting again...')
 
-        # wait until action service gets online
-        #while not self.action_client.wait_for_server(timeout_sec=1.0):
-        #    print('Approach Controller action not available, waiting again...')
+        # create a service client
+        self.find_table_srv_client = self.create_client(DetectTableLegs, 'find_table_srv')
         
         # wait until service gets online
-        #while not self.move_table_back_srv_client.wait_for_service(timeout_sec=1.0):
-        #    self.get_logger().info('Move Table Back service not available, waiting again...')
+        while not self.get_table_pos_tf.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Transform service not available, waiting again...')
+
+        # wait until service gets online
+        while not self.move_table_back_srv_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Move Table Back service not available, waiting again...')
+
+        # wait until service gets online
+        while not self.find_table_srv_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Find Table service not available, waiting again...')
         
         # define the variable to send the request
         self.move_table_req = Trigger.Request()
 
         # define the var to send the request for tf position
         self.tf_pos_req = TablePosition.Request()
+
+        # define the variable to send the request
+        self.find_table_req = DetectTableLegs.Request()
     
     def send_table_move_request(self):
         future = self.move_table_back_srv_client.call_async(self.move_table_req)
         rclpy.spin_until_future_complete(self, future)
         return future.result()
 
-    def send_pos_tf_request(self):
+    def send_approach_request(self):
         self.tf_pos_req.data = True
         future = self.get_table_pos_tf.call_async(self.tf_pos_req)
         rclpy.spin_until_future_complete(self, future)
         return future.result()
-
-    def goal_response_callback(self, future):
-        goal_handle = future.result()
-        if not goal_handle.accepted:
-            self.get_logger().info('Goal rejected :(')
-            return
-
-        self.get_logger().info('Goal accepted :)')
-
-        self._get_result_future = goal_handle.get_result_async()
-        self._get_result_future.add_done_callback(self.get_result_callback)
     
-    def get_result_callback(self, future):
-        result = future.result().result
-        status = future.result().status
-        if status == GoalStatus.STATUS_SUCCEEDED:
-            if result.success:
-                self.get_logger().info('Goal succeeded !')
-                self.action_success = True
-            else:
-                self.get_logger().info('Goal failed !')
-                self.action_success = False
-
-        else:
-            self.get_logger().info('Goal failed with status: {0}'.format(status))
-
-    def send_approach_request(self, waypoint_coordinate_x, waypoint_coordinate_y, waypoint_name):
-        
-        # action flag
-        self.action_success = False
-
-        # wait until action service is online
-        self.get_logger().info('Waiting for action server...')
-        self.action_client.wait_for_server()
-       
-        # define the goal msg
-        waypoint_goal = ApproachTable.Goal()
-
-        # pass received coordinates if table is detected
-        waypoint_goal.goal_position.x = waypoint_coordinate_x
-        waypoint_goal.goal_position.y = waypoint_coordinate_y
-
-        # pass waypoint name either
-        waypoint_goal.goal_name = waypoint_name
-        
-        # inform that the goal was sent
-        self.get_logger().info('Sending goal request...')
-
-        # send goal
-        self.send_goal_future = self.action_client.send_goal_async(waypoint_goal)
-
-        # get the response callback
-        self.send_goal_future.add_done_callback(self.goal_response_callback)
-    
-    def get_action_result(self):
-        return self.action_success
-
-class RobotController(Node):
-
-    def __init__(self):
-        super().__init__('robot_controller')
-
-        # define a subsription for odom
-        self.odom_subscription = self.create_subscription(Odometry, '/diffbot_base_controller/odom', self.odom_callback, 10)
-
-        # run flag
-        self.read = False
-
-    def get_position(self):
-        position = None
-        read = None
-        if self.read:
-            position = self._position
-            read = True
-        return position, read
-
-    def calculate_yaw(self, q_x, q_y, q_z, q_w):
-        # Calcular ángulo de yaw
-        yaw = math.atan2(2 * (q_w * q_z + q_x * q_y), 1 - 2 * (q_y**2 + q_z**2))
-        
-        # Ajustar el ángulo para que esté en el rango [-pi, pi]
-        if yaw > math.pi:
-            yaw -= 2 * math.pi
-        elif yaw < -math.pi:
-            yaw += 2 * math.pi
-        
-        return yaw
-
-    def odom_callback(self, msg):
-        
-        # get robots positions
-        self._position = msg.pose.pose.position
-        
-        # get robots orientation in terms of quaternions
-        q_x = msg.pose.pose.orientation.x
-        q_y = msg.pose.pose.orientation.y
-        q_z = msg.pose.pose.orientation.z
-        q_w = msg.pose.pose.orientation.w
-
-        # Calculate robot yaw in degree
-        self.yaw = round(self.calculate_yaw(q_x=q_x, q_y=q_y, q_z=q_z, q_w=q_w), 3)
-
-        self.read = True
+    def send_pos_tf_request(self):
+        future = self.find_table_srv_client.call_async(self.find_table_req)
+        rclpy.spin_until_future_complete(self, future)
+        return future.result()
 
 def main():
 
@@ -307,7 +197,6 @@ def main():
     navigator = BasicNavigator()
     manager = Nav2TaskManager()
     controller = ApproachController()
-    robot = RobotController()
 
     # Set your demo's initial pose
     manager.setRobotInitPosition(navigator, 'Start Position', robot_init_position['start_position'])
@@ -321,14 +210,11 @@ def main():
     # Define the initial variable
     request_table_location = 'position_'
 
-    robot_position = Point()
-    odom_read = False
+    # Define flag for when no table found
+    table_not_found_in_room = False
 
-    # Define some variables
-    approach_point = Point()
-    pre_approach_point = Point()
-    middle_point = Point()
-    center_point = Point()
+    # Define flag for when table is lifted
+    table_lifted = False
 
     # Iterate over a sequence from 1 to 3
     i = 1
@@ -345,75 +231,56 @@ def main():
         # Get Task Result 
         result = manager.getTaskResult(navigator, request_table_location)
 
+        print("Gato")
+
         # Do something if result depending on result status
         if result: 
-            i = i + 1
             
-            continue
+            print("Perro")
+
+
             # wait until robot is complete stop
             time.sleep(5)
             
+            print("Gato2")
+
+
             # request for table verifacation
             table_detection = manager.send_detection_request()
-            
-            # define a flag var
-            table_detected = False
 
-            # define time vars 
-            prev_time = None
-            elapsed_time = 0
-            start_time = time.time()
+            print(table_detection.success)         
 
-            while not table_detected and elapsed_time < 20:
-                # update table_detected var
-                table_detected = table_detection.success
-                rclpy.spin_once(manager)
+            if not table_detection.success:
                 
-                # Update elapsed time and previous time
-                prev_time = elapsed_time
-                elapsed_time = time.time() - start_time
+                print("Table Not Found")
+                print("Looking in Next Position")
+                time.sleep(2)
+                i = i + 1
+                if i == 3:
+                    table_not_found_in_room = True
+                continue
 
             # verify and inform if table was detected
             if table_detection.success:
                 print('Table Found!')
 
-                # if table found then request center position from base_link
-                center_point_tf_pos = controller.send_pos_tf_request()
+                # if table found then move underneath table center
+                in_center_position = controller.send_approach_request()
                 
                 # wait for the result
-                while not center_point_tf_pos.success:
+                while not in_center_position.success:
                     rclpy.spin_once(controller)
                 
-                # print result
-                print('Center Point x: ', center_point_tf_pos.center_point.x)
-                print('Center Point y: ', center_point_tf_pos.center_point.y)
             else:
                 print('Table Not Found in this Place')
                 continue
 
-            # first get current position
-            while not odom_read:
-                robot_position, odom_read = robot.get_position()
-                rclpy.spin_once(robot)
-
-
-            # if table detected, go to the approach point
-            controller.send_approach_request(waypoint_coordinate_x=center_point_tf_pos.center_point.x,
-                                            waypoint_coordinate_y=center_point_tf_pos.center_point.y,
-                                            waypoint_name='Center Point')
-            
-            first_pos = False
-            # wait until the robot reach the approach point
-            while not first_pos:
-                first_pos = controller.get_action_result()
-                rclpy.spin_once(controller)               
-            
                     
-            # if all waypoints where reached, then lift the table. 
-            if first_pos:
+            # if robot is under table center. 
+            if in_center_position.success:
                 print('Robot is in table center position.')
                 time.sleep(5)
-                manager.lift_table()
+
                 # change robot footprint, just for square tables
                 manager.change_footprint(table_length=0.65)
                 table_status = controller.send_table_move_request()
@@ -423,7 +290,11 @@ def main():
                 navigator.clearAllCostmaps()
                 break
 
-        else:
+        if table_not_found_in_room:
+
+            print('No Table Found, Going to HOME position!')
+            time.sleep(5)
+
             # Define the home goal position 
             robot_home_position = 'start_position'
 
@@ -437,16 +308,17 @@ def main():
             result = manager.getTaskResult(navigator, robot_home_position)
 
 
-    # Behavior with table lifted
+    if table_lifted: 
+        # Behavior with table lifted
 
-    # Go to position 
-    manager.goToPosition(navigator, request_destination, shipping_destinations[request_destination])
+        # Go to position 
+        manager.goToPosition(navigator, request_destination, shipping_destinations[request_destination])
 
-    # Arrival Time 
-    manager.arrivalTime(navigator, request_destination)
+        # Arrival Time 
+        manager.arrivalTime(navigator, request_destination)
 
-    # Get Task Result 
-    result = manager.getTaskResult(navigator, request_destination)
+        # Get Task Result 
+        result = manager.getTaskResult(navigator, request_destination)
 
                 
     while not navigator.isTaskComplete():

@@ -16,11 +16,7 @@ def generate_launch_description():
             executable='trash_table_detect',
             name='trash_table_detect'
         ),
-        Node(
-            package='approach_controller',
-            executable='approach_control',
-            name='approach_control'
-        ),
+   
         Node(
             package='approach_controller',
             executable='move_table_back',

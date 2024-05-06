@@ -30,10 +30,6 @@ class TrashTableDetection(Node):
         # define a subscription for laser scan
         self.laserscan_subscription = self.create_subscription(LaserScan, 'table_scan_filtered', self.laser_callback, 10,
                                                                 callback_group=ReentrantCallbackGroup())
-        
-        # define a subsription for odom
-        self.odom_subscription = self.create_subscription(Odometry, '/cleaner_2/odom', self.odom_callback, 10, 
-                                                                callback_group=ReentrantCallbackGroup())
 
         # define the service
         self.srv = self.create_service(DetectTableLegs, 'find_table_srv', self.find_table_srv)
@@ -49,16 +45,21 @@ class TrashTableDetection(Node):
         self.center_point_frame = Point()
 
         self.found_table = False
+        self.search_table = False
 
         self.get_logger().info('Table Detection Service Online...')
     
 
     def find_table_srv(self, request, response):
 
+        # start searching table
         self.found_table = False
+        self.search_table = True
 
-        while not self.found_table:
-            self.get_logger().info('Verifying table precenses...')
+        start_time = time.time()
+
+        while not self.found_table and (time.time() - start_time) < 10: 
+            self.get_logger().info('Verifying table presence...')
             if self.found_table:    
                 break
         
@@ -71,13 +72,12 @@ class TrashTableDetection(Node):
             response.success = False
             response.message = '¡Table Not Found!'
             self.get_logger().info('Table Not Found!')
+            self.search_table = False
+
+        # stop searching table
+        
+
         return response
-
-    # odometry callback function
-    def odom_callback(self, msg):
-
-        # get robots positions
-        self._position = msg.pose.pose.position
 
     # laser callback function
     def laser_callback(self, msg):
@@ -151,7 +151,7 @@ class TrashTableDetection(Node):
         # permutate and search for the exactly combination of square sides and diagonals
         self.table_square = self.find_square(points=self.legs_coordinates_with_no_reps, max_legs_side_distance=0.90, min_leg_side_distance=0.30, max_diagonal_distance=0.90, min_diagonal_distance=0.30)
 
-        if len(self.table_square) > 0:
+        if len(self.table_square) > 0 and self.search_table:
             # print('Square Coordinates Posible:', len(self.table_square))
 
             # select the first result from the posible combinations results
