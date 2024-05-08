@@ -140,7 +140,7 @@ class TrashTableDetection(Node):
         self.selected_points_with_distances_sorted_filtered(self.sorted_matrix_with_coord_dist, column=4, max_value=distances_average, display=False)
 
         # eliminate points that are more far than the specified values (filter)
-        self.filter_coordinates(max_legs_distance=0.72, min_leg_distance=0.62, display=False)
+        self.filter_coordinates(max_legs_distance=0.78, min_leg_distance=0.58, display=False)
 
         # eliminate points that are too close and get the result
         self.legs_coordinates_with_no_reps = self.verify_close_points(self.array_final, threshold=0.3, display=False)
@@ -149,7 +149,7 @@ class TrashTableDetection(Node):
         self.leg_distances = self.calculate_distance_to_zero(coordinates=self.legs_coordinates_with_no_reps, name_of_coordinates= 'Table Leg Distances', display=False)
         
         # permutate and search for the exactly combination of square sides and diagonals
-        self.table_square = self.find_square(points=self.legs_coordinates_with_no_reps, max_legs_side_distance=0.75, min_leg_side_distance=0.60, max_diagonal_distance=1.20, min_diagonal_distance=0.90)
+        self.table_square = self.find_square(points=self.legs_coordinates_with_no_reps, max_legs_side_distance=0.80, min_leg_side_distance=0.60, max_diagonal_distance=1.30, min_diagonal_distance=0.80)
 
         if len(self.table_square) > 0 and self.search_table:
             # print('Square Coordinates Posible:', len(self.table_square))

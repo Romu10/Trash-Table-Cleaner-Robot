@@ -31,7 +31,7 @@ class TableTransformPublisher(Node):
                                                         callback_group=ReentrantCallbackGroup())
 
         # define a publisher for cmd
-        self._pub_cmd_vel = self.create_publisher(Twist, 'cleaner_2/cmd_vel', 10)
+        self._pub_cmd_vel = self.create_publisher(Twist, '/diffbot_base_controller/cmd_vel_unstamped', 10)
 
         # define a publisher for the elevator
         self._pub_elevator = self.create_publisher(String, 'set_elevator', 10)
