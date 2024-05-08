@@ -4,9 +4,7 @@ import rclpy
 import numpy as np
 from itertools import permutations
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
 from sklearn.cluster import KMeans
-from scipy.spatial.transform import Rotation
 from rclpy.node import Node
 import tf2_ros
 from geometry_msgs.msg import TransformStamped, Point
@@ -32,10 +30,6 @@ class TrashTableDetection(Node):
         # define a subscription for laser scan
         self.laserscan_subscription = self.create_subscription(LaserScan, 'table_scan_filtered', self.laser_callback, 10,
                                                                 callback_group=ReentrantCallbackGroup())
-        
-        # define a subsription for odom
-        self.odom_subscription = self.create_subscription(Odometry, '/diffbot_base_controller/odom', self.odom_callback, 10, 
-                                                                callback_group=ReentrantCallbackGroup())
 
         # define the service
         self.srv = self.create_service(DetectTableLegs, 'find_table_srv', self.find_table_srv)
@@ -51,16 +45,21 @@ class TrashTableDetection(Node):
         self.center_point_frame = Point()
 
         self.found_table = False
+        self.search_table = False
 
         self.get_logger().info('Table Detection Service Online...')
     
 
     def find_table_srv(self, request, response):
 
+        # start searching table
         self.found_table = False
+        self.search_table = True
 
-        while not self.found_table:
-            self.get_logger().info('Verifying table precenses...')
+        start_time = time.time()
+
+        while not self.found_table and (time.time() - start_time) < 10: 
+            self.get_logger().info('Verifying table presence...')
             if self.found_table:    
                 break
         
@@ -73,13 +72,12 @@ class TrashTableDetection(Node):
             response.success = False
             response.message = '¡Table Not Found!'
             self.get_logger().info('Table Not Found!')
+            self.search_table = False
+
+        # stop searching table
+        
+
         return response
-
-    # odometry callback function
-    def odom_callback(self, msg):
-
-        # get robots positions
-        self._position = msg.pose.pose.position
 
     # laser callback function
     def laser_callback(self, msg):
@@ -103,7 +101,10 @@ class TrashTableDetection(Node):
         self.y_coordinates = np.multiply(self.laser_data, np.sin(angles))
 
         # merge data
-        self.data = np.column_stack((self.y_coordinates, self.x_coordinates))
+        data_with_inf = np.column_stack((self.y_coordinates, self.x_coordinates))
+        # filter finite values
+        finite_indices = np.isfinite(data_with_inf).all(axis=1)
+        self.data = data_with_inf[finite_indices]
         # print('\nLaser Data\n', self.data)
         # print('Data lenght: %i' % len(self.data))
 
@@ -118,7 +119,7 @@ class TrashTableDetection(Node):
         self.calculate_cluster_error(number_of_groups=self.k, display=False)
 
         # create a matrix where each point shows its cluster group
-        self.print_data_matrix(display=False)
+        #self.print_data_matrix(display=False)
         
         # count how many points are in each group
         self.count_cluster_repetitions(display=False)
@@ -139,7 +140,7 @@ class TrashTableDetection(Node):
         self.selected_points_with_distances_sorted_filtered(self.sorted_matrix_with_coord_dist, column=4, max_value=distances_average, display=False)
 
         # eliminate points that are more far than the specified values (filter)
-        self.filter_coordinates(max_legs_distance=0.72, min_leg_distance=0.62, display=False)
+        self.filter_coordinates(max_legs_distance=0.65, min_leg_distance=0.48, display=False)
 
         # eliminate points that are too close and get the result
         self.legs_coordinates_with_no_reps = self.verify_close_points(self.array_final, threshold=0.3, display=False)
@@ -148,9 +149,9 @@ class TrashTableDetection(Node):
         self.leg_distances = self.calculate_distance_to_zero(coordinates=self.legs_coordinates_with_no_reps, name_of_coordinates= 'Table Leg Distances', display=False)
         
         # permutate and search for the exactly combination of square sides and diagonals
-        self.table_square = self.find_square(points=self.legs_coordinates_with_no_reps, max_legs_side_distance=0.75, min_leg_side_distance=0.60, max_diagonal_distance=1.20, min_diagonal_distance=0.90)
+        self.table_square = self.find_square(points=self.legs_coordinates_with_no_reps, max_legs_side_distance=0.90, min_leg_side_distance=0.30, max_diagonal_distance=0.90, min_diagonal_distance=0.30)
 
-        if len(self.table_square) > 0:
+        if len(self.table_square) > 0 and self.search_table:
             # print('Square Coordinates Posible:', len(self.table_square))
 
             # select the first result from the posible combinations results
@@ -173,23 +174,23 @@ class TrashTableDetection(Node):
             # calculate all the points required for define an underneath the table path
             self.leg_middle_point = self.calculate_front_legs_center_point(leg_coordinates=sorted_table_legs_with_distance, display=False)
             self.table_center_point = self.calculate_table_center_point(leg_coordinates=sorted_table_legs_with_distance, display=False)
-            self.approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.50, display=False)
+            self.approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.55, display=False)
             self.pre_approach_point = self.calculate_approach_point(leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, approach_distance=0.25, display=False)
             self.approach_path = self.create_approach_path(approach_point=self.approach_point, leg_middle_point=self.leg_middle_point, table_center_point=self.table_center_point, display=False)
 
             # Publish Table Legs Transform
-            self.publish_table_transform(frame='leg_1', x_coordinate=sorted_table_legs_with_distance[0,0], y_coordinate=sorted_table_legs_with_distance[0,1])
-            #self.publish_table_transform(frame='leg_2', x_coordinate=sorted_table_legs_with_distance[1,0], y_coordinate=sorted_table_legs_with_distance[1,1])
-            #self.publish_table_transform(frame='leg_3', x_coordinate=sorted_table_legs_with_distance[2,0], y_coordinate=sorted_table_legs_with_distance[2,1])
-            #self.publish_table_transform(frame='leg_4', x_coordinate=sorted_table_legs_with_distance[3,0], y_coordinate=sorted_table_legs_with_distance[3,1])
+            #self.publish_table_transform(frame='leg_1', source_frame='cleaner_2/laser_sensor_link', x_coordinate=sorted_table_legs_with_distance[0,0], y_coordinate=sorted_table_legs_with_distance[0,1])
+            #self.publish_table_transform(frame='leg_2', source_frame='cleaner_2/laser_sensor_link', x_coordinate=sorted_table_legs_with_distance[1,0], y_coordinate=sorted_table_legs_with_distance[1,1])
+            #self.publish_table_transform(frame='leg_3', source_frame='cleaner_2/laser_sensor_link', x_coordinate=sorted_table_legs_with_distance[2,0], y_coordinate=sorted_table_legs_with_distance[2,1])
+            #self.publish_table_transform(frame='leg_4', source_frame='cleaner_2/laser_sensor_link', x_coordinate=sorted_table_legs_with_distance[3,0], y_coordinate=sorted_table_legs_with_distance[3,1])
 
             # Publish Table Approach Path
-            self.publish_table_transform(frame='table_center', x_coordinate=self.table_center_point[0], y_coordinate=self.table_center_point[1])
-            #self.publish_table_transform(frame='table_middle', x_coordinate=self.leg_middle_point[0], y_coordinate=self.leg_middle_point[1])
-            self.publish_table_transform(frame='approach_distance', x_coordinate=self.approach_point[0], y_coordinate=self.approach_point[1])
+            self.publish_table_transform(frame='table_center', source_frame='cleaner_2/laser_sensor_link', x_coordinate=self.table_center_point[0], y_coordinate=self.table_center_point[1])
+            self.publish_table_transform(frame='table_middle', source_frame='cleaner_2/laser_sensor_link', x_coordinate=self.leg_middle_point[0], y_coordinate=self.leg_middle_point[1])
+            self.publish_table_transform(frame='approach_distance', source_frame='cleaner_2/laser_sensor_link', x_coordinate=self.approach_point[0], y_coordinate=self.approach_point[1])
 
             # plot graph to visualize data
-            #self.plot_data()
+            # self.plot_data()
 
             # inform table found 
             #print('Trash Table Detected')
@@ -209,8 +210,9 @@ class TrashTableDetection(Node):
         
         plt.subplots_adjust(wspace=0.4, hspace=0.6)
         fig.patch.set_facecolor('black')
-
-        axs[0,0].scatter(self.data[:,0], self.data[:,1], c=self.kmeans.labels_.astype(float), s=50, label='Data Groups')
+        c=self.kmeans.labels_.astype(float)
+        c_n = c[:len(self.data[:,0])]
+        axs[0,0].scatter(self.data[:,0], self.data[:,1], c=c_n, s=50, label='Data Groups')
         axs[0,0].scatter(self.centroids[:,0], self.centroids[:,1], c='red', marker='*', s=50, label='Groups Centroids')  
         axs[0,0].legend()
         axs[0,0].set_title('Groups With Centroids', color='white')  
@@ -261,6 +263,11 @@ class TrashTableDetection(Node):
         axs[0,2].spines['left'].set_color('white')
         axs[0,2].tick_params(axis='x', colors='white', labelcolor='white') 
         axs[0,2].tick_params(axis='y', colors='white', labelcolor='white') 
+
+
+        min_length = min(len(self.krango), len(self.sse))
+        self.krango = self.krango[:min_length]
+        self.sse = self.sse[:min_length]
 
         axs[1,0].scatter(self.krango, self.sse, c='red', marker='o', label='K Value')
         axs[1,0].plot(self.krango, self.sse, c='blue')
@@ -493,8 +500,6 @@ class TrashTableDetection(Node):
             print('\nCalculated Square Center:', square_center)
         return square_center
     
-    import numpy as np
-
     def calculate_approach_point(self, leg_middle_point, table_center_point, approach_distance, display):
         leg_middle_point = np.array(leg_middle_point)
         table_center_point = np.array(table_center_point)
@@ -520,10 +525,10 @@ class TrashTableDetection(Node):
             print('Approach Path:\n', approach_path)
         return approach_path
 
-    def publish_table_transform(self, frame, x_coordinate, y_coordinate):
+    def publish_table_transform(self, frame, source_frame, x_coordinate, y_coordinate):
         tf_msg = TransformStamped()
         tf_msg.header.stamp = self.get_clock().now().to_msg()
-        tf_msg.header.frame_id = 'robot_front_laser_base_link'
+        tf_msg.header.frame_id = source_frame
         tf_msg.child_frame_id = frame
         tf_msg.transform.translation.y = x_coordinate
         tf_msg.transform.translation.x = y_coordinate
