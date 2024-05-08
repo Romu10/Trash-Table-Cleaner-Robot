@@ -185,9 +185,9 @@ class TrashTableDetection(Node):
             #self.publish_table_transform(frame='leg_4', source_frame='cleaner_2/laser_sensor_link', x_coordinate=sorted_table_legs_with_distance[3,0], y_coordinate=sorted_table_legs_with_distance[3,1])
 
             # Publish Table Approach Path
-            self.publish_table_transform(frame='table_center', source_frame='cleaner_2/laser_sensor_link', x_coordinate=self.table_center_point[0], y_coordinate=self.table_center_point[1])
-            self.publish_table_transform(frame='table_middle', source_frame='cleaner_2/laser_sensor_link', x_coordinate=self.leg_middle_point[0], y_coordinate=self.leg_middle_point[1])
-            self.publish_table_transform(frame='approach_distance', source_frame='cleaner_2/laser_sensor_link', x_coordinate=self.approach_point[0], y_coordinate=self.approach_point[1])
+            self.publish_table_transform(frame='table_center', source_frame='robot_front_laser_base_link', x_coordinate=self.table_center_point[0], y_coordinate=self.table_center_point[1])
+            self.publish_table_transform(frame='table_middle', source_frame='robot_front_laser_base_link', x_coordinate=self.leg_middle_point[0], y_coordinate=self.leg_middle_point[1])
+            self.publish_table_transform(frame='approach_distance', source_frame='robot_front_laser_base_link', x_coordinate=self.approach_point[0], y_coordinate=self.approach_point[1])
 
             # plot graph to visualize data
             # self.plot_data()

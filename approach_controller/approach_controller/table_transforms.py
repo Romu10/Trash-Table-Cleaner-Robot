@@ -93,7 +93,7 @@ class TableTransformPublisher(Node):
             start_time = time.time()
 
             # keep calculating the robot orientation everytime
-            self.robot_position = self.get_transform(target_frame='map', source_frame='base_link')
+            self.robot_position = self.get_transform(target_frame='map', source_frame='robot_base_link')
 
             # calculate robot orientation
             self.robot_tf_yaw = self.calculate_yaw( q_x= self.robot_position.transform.rotation.x,
