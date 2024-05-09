@@ -22,14 +22,15 @@ from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 #                     X            Y           Z            W               #            
 table_trash_positions = {                                                   #
     "position_1": [-0.9323,    -2.2357,   -0.6959,   0.7181],               #
-    "position_2": [ 3.8661,    -1.2054,    0.0000,   0.9999],               #
-    "position_3": [ 0.0000,     0.0000,    0.0000,   0.0000]}               #
+    "position_2": [-1.0839,    -1.0478,   -0.9999,   0.0014],               #
+    "position_3": [ 3.8661,    -1.4054,    0.0000,   0.8009],               #
+    "position_4": [ 0.0000,     0.0000,    0.0000,   0.0000]}               #
 #############################################################################   
-                                                                      
+
 ################## Shipping destination for dropoff trash tables ############
 shipping_destinations = {                                                   #              
     "backroom_1": [ 4.8152, -0.4654,  0.0130,  0.9999],                     #  Door Position 1
-    "backroom_2": [ 6.6530, -0.4890,  0.0006,  1.0000],                    #  Door Position 2
+    "backroom_2": [ 6.6530, -0.4890,  0.0006,  1.0000],                     #  Door Position 2
     "backroom_3": [ 9.6016, -0.5445, -0.0008,  1.0000]}                     #  Table Destination
 #############################################################################
 
@@ -219,7 +220,7 @@ def main():
 
     # Iterate over a sequence from 1 to 3
     i = 1
-    while i < 3:
+    while i < 4:
         # Define the goal position 
         request_table_location = 'position_' + str(i)
 
@@ -236,7 +237,7 @@ def main():
         if result: 
 
             # wait until robot is complete stop
-            time.sleep(5)
+            time.sleep(2)
 
             # request for table verifacation
             table_detection = manager.send_detection_request()
@@ -249,7 +250,7 @@ def main():
                 print("Looking in Next Position")
                 time.sleep(2)
                 i = i + 1
-                if i == 3:
+                if i == 4:
                     table_not_found_in_room = True
                 continue
 

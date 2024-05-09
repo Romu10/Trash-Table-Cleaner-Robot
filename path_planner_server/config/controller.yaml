@@ -23,13 +23,7 @@ controller_server:
       yaw_goal_tolerance: 0.30
     # DWB parameters
     FollowPath:
-      plugin: "nav2_rotation_shim_controller::RotationShimController"
-      primary_controller: "dwb_core::DWBLocalPlanner"
-      angular_dist_threshold: 0.08
-      forward_sampling_distance: 0.5
-      rotate_to_heading_angular_vel: 0.45
-      max_angular_accel: 1.0
-      simulate_ahead_time: 1.0
+      plugin: "dwb_core::DWBLocalPlanner"
     # Primary Controller params  
       debug_trajectory_details: True
       min_vel_x: 0.0
@@ -88,7 +82,7 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 10.0
-        inflation_radius: 1.20
+        inflation_radius: 1.50
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
         enabled: True
