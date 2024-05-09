@@ -34,7 +34,8 @@ class TableTransformPublisher(Node):
         self._pub_cmd_vel = self.create_publisher(Twist, 'diffbot_base_controller/cmd_vel_unstamped', 10)
 
         # define a publisher for the elevator
-        self._pub_elevator = self.create_publisher(String, 'set_elevator', 10)
+        self._pub_elevator_down = self.create_publisher(String, 'elevator_down', 10)
+        self._pub_elevator_up = self.create_publisher(String, 'elevator_up', 10)
 
         # define tf listener 
         self.tf_buffer = tf2_ros.Buffer()
@@ -77,8 +78,8 @@ class TableTransformPublisher(Node):
         
         # Make sure the elevator start down
         cmd_elevator = String()
-        cmd_elevator.data = 'down'
-        self._pub_elevator.publish(cmd_elevator)
+        cmd_elevator.data = ''
+        self._pub_elevator_down.publish(cmd_elevator)
         self.get_logger().warning('Elevator Down')
         time.sleep(5)
 
@@ -164,8 +165,8 @@ class TableTransformPublisher(Node):
                 
                 # Once the robot is in position lift the table
                 cmd_elevator = String()
-                cmd_elevator.data = 'up'
-                self._pub_elevator.publish(cmd_elevator)
+                cmd_elevator.data = ''
+                self._pub_elevator_up.publish(cmd_elevator)
                 self.get_logger().warning('Elevator Down')
                 time.sleep(5)
                 self.get_logger().warning('OPERATION SUCCESS')
