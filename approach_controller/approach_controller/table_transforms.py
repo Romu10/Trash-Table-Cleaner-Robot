@@ -31,7 +31,7 @@ class TableTransformPublisher(Node):
                                                         callback_group=ReentrantCallbackGroup())
 
         # define a publisher for cmd
-        self._pub_cmd_vel = self.create_publisher(Twist, '/diffbot_base_controller/cmd_vel_unstamped', 10)
+        self._pub_cmd_vel = self.create_publisher(Twist, 'diffbot_base_controller/cmd_vel_unstamped', 10)
 
         # define a publisher for the elevator
         self._pub_elevator = self.create_publisher(String, 'set_elevator', 10)
@@ -144,12 +144,12 @@ class TableTransformPublisher(Node):
 
             if math.fabs(err_yaw) > self._yaw_precision and not self.stop_adj_yaw:
                 twist_msg = Twist()
-                twist_msg.angular.z = 0.0050 if err_yaw > 0 else -0.0050
+                twist_msg.angular.z = 0.10 if err_yaw > 0 else -0.10
                 self._pub_cmd_vel.publish(twist_msg)
                 #self.get_logger().info("Need Yaw")
             else:
                 twist_msg = Twist()
-                twist_msg.linear.x = 0.05
+                twist_msg.linear.x = 0.1
                 self._pub_cmd_vel.publish(twist_msg)
                 #self.get_logger().info("Need Distance")
 
