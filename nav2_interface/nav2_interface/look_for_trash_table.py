@@ -29,7 +29,7 @@ table_trash_positions = {                                                   #
 
 ################## Shipping destination for dropoff trash tables ############
 shipping_destinations = {                                                   #              
-    "backroom_1": [ 4.8152, -0.4654,  0.0130,  0.9999],                     #  Door Position 1
+    "backroom_1": [ 4.8152, -0.3654,  0.0130,  0.9999],                     #  Door Position 1
     "backroom_2": [ 6.6530, -0.4890,  0.0006,  1.0000],                     #  Door Position 2
     "backroom_3": [ 9.6016, -0.5445, -0.0008,  1.0000]}                     #  Table Destination
 #############################################################################
@@ -207,7 +207,7 @@ def main():
     navigator.waitUntilNav2Active()
 
     # Define trash table final destination
-    request_destination = 'backroom_3'
+    request_destination = 'backroom_'
 
     # Define the initial variable
     request_table_location = 'position_'
@@ -273,7 +273,7 @@ def main():
             # if robot is under table center. 
             if in_center_position.success:
                 print('Robot is in table center position.')
-                time.sleep(5)
+                time.sleep(2)
 
                 # change robot footprint, just for square tables
                 manager.change_footprint(table_length=0.65)
@@ -287,35 +287,42 @@ def main():
                 
                 break
 
-        if table_not_found_in_room:
+    if table_not_found_in_room:
 
-            print('No Table Found, Going to HOME position!')
-            time.sleep(5)
+        print('No Table Found, Going to HOME position!')
+        time.sleep(2)
 
-            # Define the home goal position 
-            robot_home_position = 'start_position'
+        # Define the home goal position 
+        robot_home_position = 'start_position'
 
-            # Go to position 
-            manager.goToPosition(navigator, robot_home_position, robot_init_position[robot_home_position])
-    
-            # Arrival Time 
-            manager.arrivalTime(navigator, robot_home_position)
+        # Go to position 
+        manager.goToPosition(navigator, robot_home_position, robot_init_position[robot_home_position])
 
-            # Get Task Result 
-            result = manager.getTaskResult(navigator, robot_home_position)
+        # Arrival Time 
+        manager.arrivalTime(navigator, robot_home_position)
+
+        # Get Task Result 
+        result = manager.getTaskResult(navigator, robot_home_position)
 
 
     if table_lifted: 
-        # Behavior with table lifted
+        
+        j = 1
+        while j < 4:
+            # Define the goal position 
+            request_destination = 'backroom_' + str(j)
 
-        # Go to position 
-        manager.goToPosition(navigator, request_destination, shipping_destinations[request_destination])
+            # Go to position 
+            manager.goToPosition(navigator, request_destination, shipping_destinations[request_destination])
 
-        # Arrival Time 
-        manager.arrivalTime(navigator, request_destination)
+            # Arrival Time 
+            manager.arrivalTime(navigator, request_destination)
 
-        # Get Task Result 
-        result = manager.getTaskResult(navigator, request_destination)
+            # Get Task Result 
+            result = manager.getTaskResult(navigator, request_destination)
+            
+            if result: 
+                j = j + 1
 
                 
     while not navigator.isTaskComplete():
