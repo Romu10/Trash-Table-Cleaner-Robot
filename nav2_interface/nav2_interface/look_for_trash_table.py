@@ -22,7 +22,7 @@ from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 #                     X            Y           Z            W               #            
 table_trash_positions = {                                                   #
     "position_1": [-0.9323,    -2.2357,   -0.6959,   0.7181],               #
-    "position_2": [ 3.6661,    -1.3754,    0.0379,   0.9992],               #
+    "position_2": [ 3.8661,    -1.2054,    0.0000,   0.9999],               #
     "position_3": [ 0.0000,     0.0000,    0.0000,   0.0000]}               #
 #############################################################################   
                                                                       
@@ -206,7 +206,7 @@ def main():
     navigator.waitUntilNav2Active()
 
     # Define trash table final destination
-    request_destination = 'backroom_2'
+    request_destination = 'backroom_3'
 
     # Define the initial variable
     request_table_location = 'position_'
@@ -232,19 +232,11 @@ def main():
         # Get Task Result 
         result = manager.getTaskResult(navigator, request_table_location)
 
-        print("Gato")
-
         # Do something if result depending on result status
         if result: 
-            
-            print("Perro")
-
 
             # wait until robot is complete stop
             time.sleep(5)
-            
-            print("Gato2")
-
 
             # request for table verifacation
             table_detection = manager.send_detection_request()
@@ -289,6 +281,9 @@ def main():
                     rclpy.spin_once(controller)
                 # when the table is lifted clear the costmaps 
                 navigator.clearAllCostmaps()
+            
+                table_lifted = True
+                
                 break
 
         if table_not_found_in_room:

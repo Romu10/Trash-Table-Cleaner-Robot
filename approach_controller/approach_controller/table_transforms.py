@@ -145,12 +145,12 @@ class TableTransformPublisher(Node):
 
             if math.fabs(err_yaw) > self._yaw_precision and not self.stop_adj_yaw:
                 twist_msg = Twist()
-                twist_msg.angular.z = 0.10 if err_yaw > 0 else -0.10
+                twist_msg.angular.z = 0.12 if err_yaw > 0 else -0.12
                 self._pub_cmd_vel.publish(twist_msg)
                 #self.get_logger().info("Need Yaw")
             else:
                 twist_msg = Twist()
-                twist_msg.linear.x = 0.1
+                twist_msg.linear.x = 0.15
                 self._pub_cmd_vel.publish(twist_msg)
                 #self.get_logger().info("Need Distance")
 
@@ -181,7 +181,7 @@ class TableTransformPublisher(Node):
             elapsed_time = time.time() - start_time
 
             self.get_logger().warning('Going to Transform')
-            time.sleep(0.2)  
+            time.sleep(0.1)  
 
     def approach_proccess(self, point_x, point_y, precision, position):
         
