@@ -14,20 +14,8 @@ def generate_launch_description():
     filters_yaml = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'filters.yaml')
 
     return LaunchDescription([ 
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'robot_base_link'],
-            output='screen',
-        ),
-
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            arguments=['0', '0', '0', '0', '0', '0', 'robot_base_footprint', 'base_link'],
-            output='screen',
-        ),
-
+        
+        
         Node(
             package='rviz2',
             executable='rviz2',
@@ -111,5 +99,6 @@ def generate_launch_description():
                                         'filter_mask_server',
                                         'controller_server',
                                         'behavior_server',
-                                        'bt_navigator']}])
+                                        'bt_navigator']}]),
+        
     ])

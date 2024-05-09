@@ -14,6 +14,7 @@ from nav_msgs.msg import Odometry
 from detection_interfaces.srv import DetectTableLegs, TablePosition
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import ReentrantCallbackGroup
+from rosgraph_msgs.msg import Clock
 
 class TrashTableDetection(Node):
 
@@ -33,7 +34,14 @@ class TrashTableDetection(Node):
 
         # define the service
         self.srv = self.create_service(DetectTableLegs, 'find_table_srv', self.find_table_srv)
+        
+        # Subscribe to the '/clock' topic to get the simulation time
+        self.clock_subscriber = self.create_subscription(Clock,
+                                                         '/clock',
+                                                          self.clock_callback,
+                                                          rclpy.qos.qos_profile_sensor_data) 
 
+        
         
         # flag for starting the transform publisher
         self.send_transform = False
@@ -48,6 +56,11 @@ class TrashTableDetection(Node):
         self.search_table = False
 
         self.get_logger().info('Table Detection Service Online...')
+    
+    def clock_callback(self, msg):
+        # Callback function to handle messages on the '/clock' topic
+        # Set the simulation time as the stamp of the TransformStamped message
+        self.gazebo_clock_time = msg
     
 
     def find_table_srv(self, request, response):
@@ -140,7 +153,7 @@ class TrashTableDetection(Node):
         self.selected_points_with_distances_sorted_filtered(self.sorted_matrix_with_coord_dist, column=4, max_value=distances_average, display=False)
 
         # eliminate points that are more far than the specified values (filter)
-        self.filter_coordinates(max_legs_distance=0.78, min_leg_distance=0.58, display=False)
+        self.filter_coordinates(max_legs_distance=0.85, min_leg_distance=0.55, display=False)
 
         # eliminate points that are too close and get the result
         self.legs_coordinates_with_no_reps = self.verify_close_points(self.array_final, threshold=0.3, display=False)
@@ -149,7 +162,7 @@ class TrashTableDetection(Node):
         self.leg_distances = self.calculate_distance_to_zero(coordinates=self.legs_coordinates_with_no_reps, name_of_coordinates= 'Table Leg Distances', display=False)
         
         # permutate and search for the exactly combination of square sides and diagonals
-        self.table_square = self.find_square(points=self.legs_coordinates_with_no_reps, max_legs_side_distance=0.80, min_leg_side_distance=0.60, max_diagonal_distance=1.30, min_diagonal_distance=0.80)
+        self.table_square = self.find_square(points=self.legs_coordinates_with_no_reps, max_legs_side_distance=0.85, min_leg_side_distance=0.50, max_diagonal_distance=1.30, min_diagonal_distance=0.80)
 
         if len(self.table_square) > 0 and self.search_table:
             # print('Square Coordinates Posible:', len(self.table_square))
@@ -197,6 +210,7 @@ class TrashTableDetection(Node):
 
             # update service 
             self.found_table = True
+        
 
         #else:
 
@@ -527,7 +541,7 @@ class TrashTableDetection(Node):
 
     def publish_table_transform(self, frame, source_frame, x_coordinate, y_coordinate):
         tf_msg = TransformStamped()
-        tf_msg.header.stamp = self.get_clock().now().to_msg()
+        tf_msg.header.stamp = self.gazebo_clock_time.clock
         tf_msg.header.frame_id = source_frame
         tf_msg.child_frame_id = frame
         tf_msg.transform.translation.y = x_coordinate
