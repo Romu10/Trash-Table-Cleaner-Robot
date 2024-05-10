@@ -29,7 +29,7 @@ table_trash_positions = {                                                   #
 
 ################## Shipping destination for dropoff trash tables ############
 shipping_destinations = {                                                   #              
-    "backroom_1": [ 4.8152, -0.3654,  0.0130,  0.9999],                     #  Door Position 1
+    "backroom_1": [ 4.9152, -0.3654,  0.0130,  0.9999],                     #  Door Position 1
     "backroom_2": [ 6.6530, -0.4890,  0.0006,  1.0000],                     #  Door Position 2
     "backroom_3": [ 9.6016, -0.5445, -0.0008,  1.0000]}                     #  Table Destination
 #############################################################################
@@ -156,6 +156,9 @@ class ApproachController(Node):
         # create a service client
         self.find_table_srv_client = self.create_client(DetectTableLegs, 'find_table_srv')
         
+        # define a publisher for the elevator
+        self._pub_elevator_down = self.create_publisher(String, 'elevator_down', 10)
+        
         # wait until service gets online
         while not self.get_table_pos_tf.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('Transform service not available, waiting again...')
@@ -192,6 +195,14 @@ class ApproachController(Node):
         future = self.find_table_srv_client.call_async(self.find_table_req)
         rclpy.spin_until_future_complete(self, future)
         return future.result()
+    
+    def set_elevator_down(self):
+        # Make the elevator down
+        cmd_elevator = String()
+        cmd_elevator.data = ''
+        self._pub_elevator_down.publish(cmd_elevator)
+        self.get_logger().warning('Elevator Down')
+        time.sleep(3)
 
 def main():
 
@@ -323,6 +334,20 @@ def main():
             
             if result: 
                 j = j + 1
+                
+                if j == 4:
+                    
+                    # send the topic message to drop the elavator
+                    controller.set_elevator_down()
+                    
+                    # get out of the table
+                    table_status = controller.send_table_move_request()
+                    while not table_status.success:
+                        rclpy.spin_once(controller)
+                        
+                    # when the table is lifted clear the costmaps 
+                    navigator.clearAllCostmaps()
+                    
 
                 
     while not navigator.isTaskComplete():
