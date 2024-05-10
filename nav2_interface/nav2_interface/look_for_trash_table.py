@@ -81,6 +81,20 @@ class Nav2TaskManager(Node):
 
         self.global_footprint.publish(polygon_msg)
         self.local_footprint.publish(polygon_msg)
+    
+    def change_footprint_circle(self, radius = 0.30):
+        polygon_msg = Polygon()
+
+        num_points = 20  
+        for i in range(num_points):
+            angle = 2 * math.pi * i / num_points
+            point = Point32()
+            point.x = radius * math.cos(angle)
+            point.y = radius * math.sin(angle)
+            polygon_msg.points.append(point)
+
+        self.global_footprint.publish(polygon_msg)
+        self.local_footprint.publish(polygon_msg)
 
     def send_detection_request(self):
         future = self.detect_table_srv_client.call_async(self.req)
@@ -228,6 +242,9 @@ def main():
 
     # Define flag for when table is lifted
     table_lifted = False
+    
+    # Define a finish flag
+    table_delivered = False
 
     # Iterate over a sequence from 1 to 3
     i = 1
@@ -298,23 +315,6 @@ def main():
                 
                 break
 
-    if table_not_found_in_room:
-
-        print('No Table Found, Going to HOME position!')
-        time.sleep(2)
-
-        # Define the home goal position 
-        robot_home_position = 'start_position'
-
-        # Go to position 
-        manager.goToPosition(navigator, robot_home_position, robot_init_position[robot_home_position])
-
-        # Arrival Time 
-        manager.arrivalTime(navigator, robot_home_position)
-
-        # Get Task Result 
-        result = manager.getTaskResult(navigator, robot_home_position)
-
 
     if table_lifted: 
         
@@ -347,6 +347,26 @@ def main():
                         
                     # when the table is lifted clear the costmaps 
                     navigator.clearAllCostmaps()
+                    manager.change_footprint_circle()
+                    table_delivered = True
+    
+    if table_not_found_in_room or table_delivered:
+
+        print('Going to HOME position!')
+        time.sleep(2)
+
+        # Define the home goal position 
+        robot_home_position = 'start_position'
+
+        # Go to position 
+        manager.goToPosition(navigator, robot_home_position, robot_init_position[robot_home_position])
+
+        # Arrival Time 
+        manager.arrivalTime(navigator, robot_home_position)
+
+        # Get Task Result 
+        result = manager.getTaskResult(navigator, robot_home_position)
+        
                     
 
                 
