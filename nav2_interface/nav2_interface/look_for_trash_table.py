@@ -29,7 +29,7 @@ table_trash_positions = {                                                   #
 
 ################## Shipping destination for dropoff trash tables ############
 shipping_destinations = {                                                   #              
-    "backroom_1": [ 4.9152, -0.3654,  0.0130,  0.9999],                     #  Door Position 1
+    "backroom_1": [ 4.7152, -0.3654,  0.0130,  0.9999],                     #  Door Position 1
     "backroom_2": [ 6.6530, -0.4890,  0.0006,  1.0000],                     #  Door Position 2
     "backroom_3": [ 9.6016, -0.5445, -0.0008,  1.0000]}                     #  Table Destination
 #############################################################################
