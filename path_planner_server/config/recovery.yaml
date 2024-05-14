@@ -19,9 +19,9 @@ behavior_server:
     local_frame: odom
     global_frame: map
     robot_base_frame: robot_base_link
-    transform_timeout: 0.1
+    transform_timeout: 0.2
     simulate_ahead_time: 2.0
-    max_rotational_vel: 1.0
-    min_rotational_vel: 0.4
+    max_rotational_vel: 0.5
+    min_rotational_vel: 0.2
     rotational_acc_lim: 3.2
-    enable_stamped_cmd_vel: True
+    enable_stamped_cmd_vel: false

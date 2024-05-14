@@ -29,14 +29,15 @@ table_trash_positions = {                                                   #
 
 ################## Shipping destination for dropoff trash tables ############
 shipping_destinations = {                                                   #              
-#    "backroom_1": [ 4.8152, -0.3654,  0.0130,  0.9999],                     #  Door Position 1
-    "backroom_1": [ 6.6530, -0.4890,  0.0006,  1.0000],                     #  Door Position 2
-    "backroom_2": [ 8.2030, -2.0445, -0.7043,  0.7000]}                     #  Table Destination
+    "backroom_1": [ 4.8152, -0.3654,  0.0130,  0.9999],                     #  Door Position 1
+    "backroom_2": [ 6.6530, -0.4890,  0.0006,  1.0000],                     #  Door Position 2
+    "backroom_3": [ 8.8030, -0.5045,  0.0000,  0.9000]}                     #  Table Destination
 #############################################################################
 
 ######################     Robot initial positions     ######################
 robot_init_position = {                                                     #              
-    "start_position": [0.00, 0.00, 0.000, 0.99]}                  #
+    "start_position": [0.00, 0.00, 0.000, 0.99],                            #
+    "ready_position": [0.00, 0.00, 0.7315, 0.6817]}                         #
 #############################################################################
 
 class Nav2TaskManager(Node):
@@ -319,7 +320,7 @@ def main():
     if table_lifted: 
         
         j = 1
-        while j < 3:
+        while j < 4:
             # Define the goal position 
             request_destination = 'backroom_' + str(j)
 
@@ -335,7 +336,7 @@ def main():
             if result: 
                 j = j + 1
                 
-                if j == 3:
+                if j == 4:
                     
                     # send the topic message to drop the elavator
                     controller.set_elevator_down()
@@ -356,7 +357,7 @@ def main():
         time.sleep(2)
 
         # Define the home goal position 
-        robot_home_position = 'start_position'
+        robot_home_position = 'ready_position'
 
         # Go to position 
         manager.goToPosition(navigator, robot_home_position, robot_init_position[robot_home_position])
