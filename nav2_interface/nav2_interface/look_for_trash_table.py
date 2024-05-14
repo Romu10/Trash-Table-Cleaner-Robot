@@ -23,15 +23,15 @@ from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 table_trash_positions = {                                                   #
     "position_1": [-0.9323,    -2.2357,   -0.0000,   0.9999],               #
     "position_2": [-1.0839,    -1.0478,   -0.9999,   0.0014],               #
-    "position_3": [ 4.0661,    -1.4554,    0.0000,   0.8009],               #
+    "position_3": [ 3.9061,    -1.5054,    0.1000,   0.9909],               #
     "position_4": [ 0.0000,     0.0000,    0.0000,   0.0000]}               #
 #############################################################################   
 
 ################## Shipping destination for dropoff trash tables ############
 shipping_destinations = {                                                   #              
-    "backroom_1": [ 5.0152, -0.3654,  0.0130,  0.9999],                     #  Door Position 1
-    "backroom_2": [ 6.6530, -0.4890,  0.0006,  1.0000],                     #  Door Position 2
-    "backroom_3": [ 8.6016, -0.5445, -0.0008,  1.0000]}                     #  Table Destination
+#    "backroom_1": [ 4.8152, -0.3654,  0.0130,  0.9999],                     #  Door Position 1
+    "backroom_1": [ 6.6530, -0.4890,  0.0006,  1.0000],                     #  Door Position 2
+    "backroom_2": [ 8.2030, -2.0445, -0.7043,  0.7000]}                     #  Table Destination
 #############################################################################
 
 ######################     Robot initial positions     ######################
@@ -319,7 +319,7 @@ def main():
     if table_lifted: 
         
         j = 1
-        while j < 4:
+        while j < 3:
             # Define the goal position 
             request_destination = 'backroom_' + str(j)
 
@@ -335,7 +335,7 @@ def main():
             if result: 
                 j = j + 1
                 
-                if j == 4:
+                if j == 3:
                     
                     # send the topic message to drop the elavator
                     controller.set_elevator_down()

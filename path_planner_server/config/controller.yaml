@@ -28,18 +28,18 @@ controller_server:
       debug_trajectory_details: True
       min_vel_x: 0.0
       min_vel_y: 0.0
-      max_vel_x: 0.35
+      max_vel_x: 0.25
       max_vel_y: 0.0
-      max_vel_theta: 0.50
+      max_vel_theta: 0.25
       min_speed_xy: 0.0
-      max_speed_xy: 0.35
+      max_speed_xy: 0.25
       min_speed_theta: 0.0
       acc_lim_x: 1.0
       acc_lim_y: 0.0
-      acc_lim_theta: 3.2
+      acc_lim_theta: 0.8
       decel_lim_x: -1.5
       decel_lim_y: 0.0
-      decel_lim_theta: -3.2
+      decel_lim_theta: -0.5
       vx_samples: 30
       vy_samples: 20
       vtheta_samples: 20
@@ -54,9 +54,9 @@ controller_server:
       #critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
       critics: ["RotateToGoal", "Oscillation", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
       BaseObstacle.scale: 0.02
-      PathAlign.scale: 60.0
+      PathAlign.scale: 70.0
       PathAlign.forward_point_distance: 0.1
-      GoalAlign.scale: 34.0
+      GoalAlign.scale: 45.0
       GoalAlign.forward_point_distance: 0.1
       PathDist.scale: 25.0
       GoalDist.scale: 14.0
@@ -82,7 +82,7 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 10.0
-        inflation_radius: 1.50
+        inflation_radius: 1.25
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
         enabled: True
