@@ -28,7 +28,7 @@ class MoveTableBack(Node):
         twist_msg = Twist()
         start_time = time.time()
         elapsed_time = 0.0
-        while elapsed_time < 20:
+        while elapsed_time < 12:
             elapsed_time = time.time() - start_time
             twist_msg.linear.x = -0.20
             twist_msg.angular.z = 0.00
