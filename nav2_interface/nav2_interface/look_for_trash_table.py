@@ -23,7 +23,7 @@ from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 table_trash_positions = {                                                   #
     "position_1": [-0.9323,    -2.2357,   -0.6959,   0.7181],               #
     "position_2": [-1.0839,    -1.0478,   -0.9999,   0.0014],               #
-    "position_3": [ 3.8661,    -1.4054,    0.0000,   0.8009],               #
+    "position_3": [ 3.8661,    -1.4554,    0.0000,   0.8009],               #
     "position_4": [ 0.0000,     0.0000,    0.0000,   0.0000]}               #
 #############################################################################   
 
@@ -31,7 +31,7 @@ table_trash_positions = {                                                   #
 shipping_destinations = {                                                   #              
     "backroom_1": [ 4.9152, -0.3654,  0.0130,  0.9999],                     #  Door Position 1
     "backroom_2": [ 6.6530, -0.4890,  0.0006,  1.0000],                     #  Door Position 2
-    "backroom_3": [ 9.6016, -0.5445, -0.0008,  1.0000]}                     #  Table Destination
+    "backroom_3": [ 9.6016, -2.5445, -0.0008,  1.0000]}                     #  Table Destination
 #############################################################################
 
 ######################     Robot initial positions     ######################

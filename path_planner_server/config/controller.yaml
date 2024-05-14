@@ -37,7 +37,7 @@ controller_server:
       acc_lim_x: 2.0
       acc_lim_y: 0.0
       acc_lim_theta: 3.2
-      decel_lim_x: -2.5
+      decel_lim_x: -1.5
       decel_lim_y: 0.0
       decel_lim_theta: -3.2
       vx_samples: 20
@@ -61,7 +61,7 @@ controller_server:
       PathDist.scale: 25.0
       GoalDist.scale: 14.0
       RotateToGoal.scale: 50.0
-      RotateToGoal.slowing_factor: 10.0
+      RotateToGoal.slowing_factor: 5.0
       RotateToGoal.lookahead_time: -1.0
 
 local_costmap:
