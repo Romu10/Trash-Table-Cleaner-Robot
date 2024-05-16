@@ -31,7 +31,7 @@ table_trash_positions = {                                                   #
 shipping_destinations = {                                                   #              
     "backroom_1": [ 4.9152, -0.3054,  0.0130,  0.9999],                     #  Door Position 1
     "backroom_2": [ 6.6530, -0.4890,  0.0006,  1.0000],                     #  Door Position 2
-    "backroom_3": [ 8.8030, -0.5045,  0.0000,  0.9000]}                     #  Table Destination
+    "backroom_3": [ 8.8030, -0.5045,  0.0000,  0.9900]}                     #  Table Destination
 #############################################################################
 
 ######################     Robot initial positions     ######################
